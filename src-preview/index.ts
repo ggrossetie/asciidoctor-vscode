@@ -89,7 +89,6 @@ window.addEventListener('message', (event) => {
     return;
   }
 
-  //console.log("GOT MESSAGE", event.data);
   switch (event.data.type) {
   case 'onDidChangeTextEditorSelection':
     marker.onDidChangeTextEditorSelection(event.data.line);

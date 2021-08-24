@@ -3,22 +3,22 @@
  *--------------------------------------------------------------------------------------------*/
 
 import * as vscode from 'vscode';
+import * as nls from 'vscode-nls';
 import * as path from 'path';
 
 import { Logger } from '../logger';
 import { AsciidocContentProvider } from './previewContentProvider';
 import { disposeAll } from '../util/dispose';
 
-import * as nls from 'vscode-nls';
 import { getVisibleLine, AsciidocFileTopmostLineMonitor } from '../util/topmostLineMonitor';
 import { AsciidocPreviewConfigurationManager } from './previewConfig';
 import { AsciidocContributions } from '../asciidocExtensions';
 import { isAsciidocFile } from '../util/file';
+import { WebviewResourceProvider } from '../util/resources';
 import { resolveLinkToAsciidocFile } from '../commands/openDocumentLink';
 const localize = nls.loadMessageBundle();
 
-export class AsciidocPreview
-{
+export class AsciidocPreview implements WebviewResourceProvider {
 
   public static viewType = 'asciidoc.preview';
 
@@ -412,7 +412,7 @@ export class AsciidocPreview
 
     this.currentVersion = { resource, version: document.version };
 
-    const content = await this._contentProvider.providePreviewHTML(document, this._previewConfigurations, this.line, this.state);
+    const content = await this._contentProvider.providePreviewHTML(document, this, this._previewConfigurations, this.line, this.state);
     if (this._resource === resource)
     {
       this.editor.title = AsciidocPreview.getPreviewTitle(this._resource, this._locked);
@@ -520,6 +520,19 @@ export class AsciidocPreview
   {
     this.imageInfo = imageInfo;
   }
+
+  //#region WebviewResourceProvider
+
+  asWebviewUri(resource: vscode.Uri) {
+    return this.editor.webview.asWebviewUri(resource);
+  }
+
+  get cspSource() {
+    return this.editor.webview.cspSource;
+  }
+
+  //#endregion
+
 }
 
 export interface PreviewSettings
