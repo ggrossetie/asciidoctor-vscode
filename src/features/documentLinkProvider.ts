@@ -9,6 +9,7 @@ import { OpenDocumentLinkCommand } from '../commands/openDocumentLink'
 import { getUriForLinkWithKnownExternalScheme } from '../util/links'
 import { similarArrayMatch } from '../similarArrayMatch'
 import { isSchemeBlacklisted } from '../linkSanitizer'
+import { AsciidocParser } from '../asciidocParser'
 
 const localize = nls.loadMessageBundle()
 export interface AsciidoctorLinkRegexes {
@@ -42,20 +43,17 @@ function normalizeLink (
 }
 
 export default class LinkProvider implements vscode.DocumentLinkProvider {
-  private engine: any
-
-  constructor (engine) {
-    this.engine = engine
+  constructor (private readonly errorCollection: vscode.DiagnosticCollection = null) {
   }
 
-  public async provideDocumentLinks (
+  public provideDocumentLinks (
     document: vscode.TextDocument,
     _token: vscode.CancellationToken
-  ): Promise<vscode.DocumentLink[]> {
+  ): vscode.DocumentLink[] {
     const base = path.dirname(document.uri.fsPath)
     const text = document.getText()
 
-    const adParser = await this.engine.getEngine(document.uri)
+    const adParser = new AsciidocParser(document.uri.fsPath, this.errorCollection)
     adParser.convertUsingJavascript(text, document, false, 'html', true)
 
     const results: vscode.DocumentLink[] = []
