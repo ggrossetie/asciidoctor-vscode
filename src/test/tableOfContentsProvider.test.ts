@@ -10,7 +10,7 @@ import { TableOfContentsProvider } from '../tableOfContentsProvider'
 import { InMemoryDocument } from './inMemoryDocument'
 import { createNewAsciidocEngine } from './engine'
 
-const testFileName = vscode.Uri.file('test.md')
+const testFileName = vscode.Uri.file('test.adoc')
 
 suite('asciidoc.TableOfContentsProvider', () => {
   test('Lookup should not return anything for empty document', async () => {

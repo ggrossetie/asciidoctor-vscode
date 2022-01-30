@@ -8,7 +8,7 @@ import * as vscode from 'vscode'
 import LinkProvider from '../features/documentLinkProvider'
 import { InMemoryDocument } from './inMemoryDocument'
 
-const testFileName = vscode.Uri.file('test.md')
+const testFileName = vscode.Uri.file('test.adoc')
 
 const noopToken = new class implements vscode.CancellationToken {
   private _onCancellationRequestedEmitter = new vscode.EventEmitter<void>();
@@ -31,16 +31,14 @@ function assertRangeEqual (expected: vscode.Range, actual: vscode.Range) {
 }
 
 (vscode.env.uiKind === vscode.UIKind.Web ? suite.skip : suite)('asciidoc.DocumentLinkProvider', () => {
-
   setup(async () => {
     // the tests make the assumption that link providers are already registered
-    await vscode.extensions.getExtension('asciidoctor.asciidoctor-vscode')!.activate();
-  });
+    await vscode.extensions.getExtension('asciidoctor.asciidoctor-vscode')!.activate()
+  })
 
   teardown(async () => {
-    await vscode.commands.executeCommand('workbench.action.closeAllEditors');
-  });
-
+    await vscode.commands.executeCommand('workbench.action.closeAllEditors')
+  })
 
   test('Should not return anything for empty document', () => {
     const links = getLinksForFile('')
@@ -58,23 +56,25 @@ c`)
 
   test('Should detect basic include', () => {
     const links = getLinksForFile(`a
+
 include::b.adoc[]
 
 c`)
     assert.strictEqual(links.length, 1)
     const [link] = links
-    assertRangeEqual(link.range, new vscode.Range(1, 9, 1, 15))
+    assertRangeEqual(link.range, new vscode.Range(2, 9, 2, 15))
   })
 
   test('Should detect basic workspace include', () => {
     {
       const links = getLinksForFile(`a
+
 include::./b.adoc[]
 
 c`)
       assert.strictEqual(links.length, 1)
       const [link] = links
-      assertRangeEqual(link.range, new vscode.Range(1, 9, 1, 17))
+      assertRangeEqual(link.range, new vscode.Range(2, 9, 2, 17))
     }
     {
       const links = getLinksForFile(`a
