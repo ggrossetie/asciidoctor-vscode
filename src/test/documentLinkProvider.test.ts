@@ -30,7 +30,18 @@ function assertRangeEqual (expected: vscode.Range, actual: vscode.Range) {
   assert.strictEqual(expected.end.character, actual.end.character)
 }
 
-suite('asciidoc.DocumentLinkProvider', () => {
+(vscode.env.uiKind === vscode.UIKind.Web ? suite.skip : suite)('asciidoc.DocumentLinkProvider', () => {
+
+  setup(async () => {
+    // the tests make the assumption that link providers are already registered
+    await vscode.extensions.getExtension('asciidoctor.asciidoctor-vscode')!.activate();
+  });
+
+  teardown(async () => {
+    await vscode.commands.executeCommand('workbench.action.closeAllEditors');
+  });
+
+
   test('Should not return anything for empty document', () => {
     const links = getLinksForFile('')
     assert.strictEqual(links.length, 0)
