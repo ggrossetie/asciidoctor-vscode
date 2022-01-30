@@ -26,7 +26,7 @@ export class AsciidocEngine {
     this.errorCollection = errorCollection
   }
 
-  private async getEngine (resource: vscode.Uri): Promise<AsciidocParser> {
+  public getEngine (resource: vscode.Uri): AsciidocParser {
     if (!this.ad) {
       this.ad = new AsciidocParser(resource.fsPath, this.errorCollection)
     }
@@ -60,14 +60,14 @@ export class AsciidocEngine {
 
     this.currentDocument = document
     this.firstLine = offset
-    const engine = await this.getEngine(document)
+    const engine = this.getEngine(document)
     const doc = await vscode.workspace.openTextDocument(document)
     return await engine.parseText(text, doc, forHTML, backend, context, editor)
   }
 
   public async load (document: vscode.Uri, source: string): Promise<any> {
     this.currentDocument = document
-    const engine = await this.getEngine(document)
+    const engine = this.getEngine(document)
     const doc = await vscode.workspace.openTextDocument(document)
     await engine.parseText(source, doc)
     return engine.document

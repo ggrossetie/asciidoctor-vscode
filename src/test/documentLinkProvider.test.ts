@@ -7,6 +7,7 @@ import 'mocha'
 import * as vscode from 'vscode'
 import LinkProvider from '../features/documentLinkProvider'
 import { InMemoryDocument } from './inMemoryDocument'
+import { createNewAsciidocEngine } from "./engine";
 
 const testFileName = vscode.Uri.file('test.adoc')
 
@@ -17,9 +18,9 @@ const noopToken = new class implements vscode.CancellationToken {
   get isCancellationRequested () { return false }
 }()
 
-function getLinksForFile (fileContents: string) {
+async function getLinksForFile (fileContents: string) {
   const doc = new InMemoryDocument(testFileName, fileContents)
-  const provider = new LinkProvider()
+  const provider = new LinkProvider(createNewAsciidocEngine())
   return provider.provideDocumentLinks(doc, noopToken)
 }
 
@@ -30,23 +31,14 @@ function assertRangeEqual (expected: vscode.Range, actual: vscode.Range) {
   assert.strictEqual(expected.end.character, actual.end.character)
 }
 
-(vscode.env.uiKind === vscode.UIKind.Web ? suite.skip : suite)('asciidoc.DocumentLinkProvider', () => {
-  setup(async () => {
-    // the tests make the assumption that link providers are already registered
-    await vscode.extensions.getExtension('asciidoctor.asciidoctor-vscode')!.activate()
-  })
-
-  teardown(async () => {
-    await vscode.commands.executeCommand('workbench.action.closeAllEditors')
-  })
-
-  test('Should not return anything for empty document', () => {
-    const links = getLinksForFile('')
+suite('asciidoc.DocumentLinkProvider', async () => {
+  test('Should not return anything for empty document', async () => {
+    const links = await getLinksForFile('')
     assert.strictEqual(links.length, 0)
   })
 
-  test('Should not return anything for simple document without include', () => {
-    const links = getLinksForFile(`= a
+  test('Should not return anything for simple document without include', async () => {
+    const links = await getLinksForFile(`= a
 
 b
 
@@ -54,8 +46,8 @@ c`)
     assert.strictEqual(links.length, 0)
   })
 
-  test('Should detect basic include', () => {
-    const links = getLinksForFile(`a
+  test('Should detect basic include', async () => {
+    const links = await getLinksForFile(`a
 
 include::b.adoc[]
 
@@ -65,9 +57,9 @@ c`)
     assertRangeEqual(link.range, new vscode.Range(2, 9, 2, 15))
   })
 
-  test('Should detect basic workspace include', () => {
+  test('Should detect basic workspace include', async () => {
     {
-      const links = getLinksForFile(`a
+      const links = await getLinksForFile(`a
 
 include::./b.adoc[]
 
@@ -77,7 +69,7 @@ c`)
       assertRangeEqual(link.range, new vscode.Range(2, 9, 2, 17))
     }
     {
-      const links = getLinksForFile(`a
+      const links = await getLinksForFile(`a
 
 [source,ruby]
 ----

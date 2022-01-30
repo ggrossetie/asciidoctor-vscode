@@ -19,6 +19,7 @@ import { AttributeCompleter } from './features/attributeCompleter'
 import { AsciidocFileIncludeAutoCompletionMonitor } from './util/includeAutoCompletion'
 
 export function activate (context: vscode.ExtensionContext) {
+  console.log('active extension!')
   const contributions = getAsciidocExtensionContributions(context)
 
   const cspArbiter = new ExtensionContentSecurityPolicyArbiter(context.globalState, context.workspaceState)
@@ -42,7 +43,7 @@ export function activate (context: vscode.ExtensionContext) {
   context.subscriptions.push(includeAutoCompletionMonitor)
 
   context.subscriptions.push(vscode.languages.registerDocumentSymbolProvider(selector, symbolProvider))
-  context.subscriptions.push(vscode.languages.registerDocumentLinkProvider(selector, new LinkProvider(errorCollection)))
+  context.subscriptions.push(vscode.languages.registerDocumentLinkProvider(selector, new LinkProvider(engine)))
   context.subscriptions.push(vscode.languages.registerWorkspaceSymbolProvider(new AsciidocWorkspaceSymbolProvider(symbolProvider)))
   context.subscriptions.push(vscode.languages.registerCompletionItemProvider(selector, new AttributeCompleter(), '{'))
   const previewSecuritySelector = new PreviewSecuritySelector(cspArbiter, previewManager)
