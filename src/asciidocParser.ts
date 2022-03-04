@@ -7,11 +7,12 @@ import { Asciidoctor } from '@asciidoctor/core'
 const asciidoctorFindIncludeProcessor = require('./asciidoctorFindIncludeProcessor')
 
 const asciidoctor = require('@asciidoctor/core')
-const docbook = require('@asciidoctor/docbook-converter')
+const docbookConverter = require('@asciidoctor/docbook-converter')
 const kroki = require('asciidoctor-kroki')
 const processor = asciidoctor()
 const highlightjsBuiltInSyntaxHighlighter = processor.SyntaxHighlighter.for('highlight.js')
 const highlightjsAdapter = require('./highlightjs-adapter')
+docbookConverter.register()
 
 export class AsciidocParser {
   private stylesdir: string
@@ -29,6 +30,45 @@ export class AsciidocParser {
 
   public getMediaDir (text) {
     return text.match(/^\\s*:mediadir:/)
+  }
+
+  public exportUsingJavascript(text: string, doc: vscode.TextDocument, backend: "html5" | "docbook5"): string {
+    const asciidocConfig = vscode.workspace.getConfiguration('asciidoc', null)
+    if (this.errorCollection) {
+      this.errorCollection.clear()
+    }
+    const memoryLogger = processor.MemoryLogger.create()
+    processor.LoggerManager.setLogger(memoryLogger)
+    const registry = processor.Extensions.create()
+    const useKroki = asciidocConfig.get('use_kroki')
+    if (useKroki) {
+      kroki.register(registry)
+    }
+    highlightjsBuiltInSyntaxHighlighter.$register_for('highlight.js', 'highlightjs')
+
+    const useWorkspaceAsBaseDir = asciidocConfig.get('useWorkspaceRoot')
+    const documentPath = process.env.BROWSER_ENV
+      ? undefined
+      : path.dirname(path.resolve(doc.fileName))
+    const baseDir = useWorkspaceAsBaseDir && typeof vscode.workspace.rootPath !== 'undefined'
+      ? vscode.workspace.rootPath
+      : documentPath
+    const options: { [key: string]: any } = {
+      attributes: {
+        'env-vscode': ''
+      },
+      backend,
+      base_dir: baseDir,
+      extension_registry: registry,
+      header_footer: true,
+      safe: 'unsafe',
+      //to_file: false,
+    }
+    const html = processor.convert(text, options)
+    if (asciidocConfig.get('enableErrorDiagnostics')) {
+      this.reportErrors(memoryLogger, doc)
+    }
+    return html
   }
 
   public async convertUsingJavascript (text: string,
@@ -134,11 +174,6 @@ export class AsciidocParser {
       })
 
       attributes['env-vscode'] = ''
-
-      if (backend.startsWith('docbook')) {
-        docbook.register()
-      }
-
       let options: { [key: string]: any } = {
         attributes: attributes,
         backend: backend,
@@ -167,64 +202,7 @@ export class AsciidocParser {
         })
         const resultHTML = document.convert(options)
         if (enableErrorDiagnostics) {
-          const diagnostics = []
-          memoryLogger.getMessages().forEach((error) => {
-            //console.log(error); //Error from asciidoctor.js
-            let errorMessage = error.getText()
-            let sourceLine = 0
-            let relatedFile = null
-            const diagnosticSource = 'asciidoctor.js'
-            // allocate to line 0 in the absence of information
-            let sourceRange = doc.lineAt(0).range
-            const location = error.getSourceLocation()
-            if (location) { //There is a source location
-              if (location.getPath() === '<stdin>') { //error is within the file we are parsing
-                sourceLine = location.getLineNumber() - 1
-                // ensure errors are always associated with a valid line
-                sourceLine = sourceLine >= doc.lineCount ? doc.lineCount - 1 : sourceLine
-                sourceRange = doc.lineAt(sourceLine).range
-              } else { //error is coming from an included file
-                relatedFile = error.getSourceLocation()
-                // try to find the include responsible from the info provided by asciidoctor.js
-                sourceLine = doc.getText().split('\n').indexOf(doc.getText().split('\n').find((str) => str.startsWith('include') && str.includes(error.message.source_location.path)))
-                if (sourceLine !== -1) {
-                  sourceRange = doc.lineAt(sourceLine).range
-                }
-              }
-            } else {
-              // generic error (e.g. :source-highlighter: coderay)
-              errorMessage = error.message
-            }
-            let severity = vscode.DiagnosticSeverity.Information
-            if (error.severity === 'WARN') {
-              severity = vscode.DiagnosticSeverity.Warning
-            } else if (error.severity === 'ERROR') {
-              severity = vscode.DiagnosticSeverity.Error
-            } else if (error.severity === 'DEBUG') {
-              severity = vscode.DiagnosticSeverity.Information
-            }
-            let diagnosticRelated = null
-            if (relatedFile) {
-              diagnosticRelated = [
-                new vscode.DiagnosticRelatedInformation(
-                  new vscode.Location(vscode.Uri.file(relatedFile.file),
-                    new vscode.Position(0, 0)
-                  ),
-                  errorMessage
-                ),
-              ]
-              errorMessage = 'There was an error in an included file'
-            }
-            const diagnosticError = new vscode.Diagnostic(sourceRange, errorMessage, severity)
-            diagnosticError.source = diagnosticSource
-            if (diagnosticRelated) {
-              diagnosticError.relatedInformation = diagnosticRelated
-            }
-            diagnostics.push(diagnosticError)
-          })
-          if (this.errorCollection) {
-            this.errorCollection.set(doc.uri, diagnostics)
-          }
+          this.reportErrors(enableErrorDiagnostics, memoryLogger, doc);
         }
         resolve({ html: resultHTML, document })
       } catch (e) {
@@ -358,5 +336,67 @@ export class AsciidocParser {
     // AsciidoctorWebViewConverter is not available in asciidoctor (Ruby) CLI
     const html = await this.convertUsingApplication(text, doc, forHTMLSave, backend === 'webview-html5' ? 'html5' : backend)
     return { html }
+  }
+
+
+  private reportErrors(memoryLogger: Asciidoctor.MemoryLogger, doc: vscode.TextDocument) {
+    const diagnostics = []
+    memoryLogger.getMessages().forEach((error) => {
+      //console.log(error); //Error from asciidoctor.js
+      let errorMessage = error.getText()
+      let sourceLine = 0
+      let relatedFile = null
+      const diagnosticSource = 'asciidoctor.js'
+      // allocate to line 0 in the absence of information
+      let sourceRange = doc.lineAt(0).range
+      const location = error.getSourceLocation()
+      if (location) { //There is a source location
+        if (location.getPath() === '<stdin>') { //error is within the file we are parsing
+          sourceLine = location.getLineNumber() - 1
+          // ensure errors are always associated with a valid line
+          sourceLine = sourceLine >= doc.lineCount ? doc.lineCount - 1 : sourceLine
+          sourceRange = doc.lineAt(sourceLine).range
+        } else { //error is coming from an included file
+          relatedFile = error.getSourceLocation()
+          // try to find the include responsible from the info provided by asciidoctor.js
+          sourceLine = doc.getText().split('\n').indexOf(doc.getText().split('\n').find((str) => str.startsWith('include') && str.includes(error.message.source_location.path)))
+          if (sourceLine !== -1) {
+            sourceRange = doc.lineAt(sourceLine).range
+          }
+        }
+      } else {
+        // generic error (e.g. :source-highlighter: coderay)
+        errorMessage = error.message
+      }
+      let severity = vscode.DiagnosticSeverity.Information
+      if (error.severity === 'WARN') {
+        severity = vscode.DiagnosticSeverity.Warning
+      } else if (error.severity === 'ERROR') {
+        severity = vscode.DiagnosticSeverity.Error
+      } else if (error.severity === 'DEBUG') {
+        severity = vscode.DiagnosticSeverity.Information
+      }
+      let diagnosticRelated = null
+      if (relatedFile) {
+        diagnosticRelated = [
+          new vscode.DiagnosticRelatedInformation(
+            new vscode.Location(vscode.Uri.file(relatedFile.file),
+              new vscode.Position(0, 0)
+            ),
+            errorMessage
+          ),
+        ]
+        errorMessage = 'There was an error in an included file'
+      }
+      const diagnosticError = new vscode.Diagnostic(sourceRange, errorMessage, severity)
+      diagnosticError.source = diagnosticSource
+      if (diagnosticRelated) {
+        diagnosticError.relatedInformation = diagnosticRelated
+      }
+      diagnostics.push(diagnosticError)
+    })
+    if (this.errorCollection) {
+      this.errorCollection.set(doc.uri, diagnostics)
+    }
   }
 }
