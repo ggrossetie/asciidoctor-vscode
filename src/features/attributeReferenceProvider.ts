@@ -6,8 +6,8 @@ export class AttributeReferenceProvider {
   constructor (private readonly extensionUri: vscode.Uri) {
   }
 
-  async provideCompletionItems (textDocument: vscode.TextDocument, position: vscode.Position) {
-    const { document } = await new AsciidocParser(this.extensionUri).parseText(textDocument.getText(), textDocument)
+  provideCompletionItems (textDocument: vscode.TextDocument, position: vscode.Position) {
+    const { document } = new AsciidocParser(this.extensionUri).load(textDocument)
     if (document) {
       const attributes = document.getAttributes()
       const lineText = textDocument.lineAt(position).text

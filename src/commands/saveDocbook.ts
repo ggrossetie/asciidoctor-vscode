@@ -4,6 +4,7 @@ import * as path from 'path'
 import { exec } from 'child_process'
 import { Command } from '../commandManager'
 import { AsciidocEngine } from '../asciidocEngine'
+import { AsciidoctorBuiltInBackends } from '../asciidocParser'
 
 export class SaveDocbook implements Command {
   public readonly id = 'asciidoc.saveDocbook'
@@ -28,10 +29,9 @@ export class SaveDocbook implements Command {
       fsPath = path.join(docPath.dir, docPath.name + '.xml')
     }
 
-    const config = vscode.workspace.getConfiguration('asciidoc', doc.uri)
-    const docbookVersion = config.get<string>('saveDocbook.docbookVersion', 'docbook5')
-
-    const { output } = await this.engine.render(doc.uri, true, text, true, docbookVersion)
+    const asciidocConfig = vscode.workspace.getConfiguration('asciidoc', doc.uri)
+    const docbookBackend = asciidocConfig.get<AsciidoctorBuiltInBackends>('saveDocbook.docbookVersion', 'docbook5')
+    const { output } = await this.engine.export(doc.uri, text, docbookBackend)
 
     fs.writeFile(fsPath, output, function (err) {
       if (err) {

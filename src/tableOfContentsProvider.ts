@@ -5,6 +5,7 @@
 import * as vscode from 'vscode'
 import { AsciidocEngine } from './asciidocEngine'
 import { githubSlugifier, Slug } from './slugify'
+import { SkinnyTextDocument } from './util/document'
 
 export interface TocEntry {
   readonly slug: Slug;
@@ -12,15 +13,6 @@ export interface TocEntry {
   readonly level: number;
   readonly line: number;
   readonly location: vscode.Location;
-}
-
-export interface SkinnyTextDocument {
-  readonly uri: vscode.Uri;
-  readonly lineCount: number;
-
-  getText(): string;
-
-  lineAt(line: number): vscode.TextLine;
 }
 
 export class TableOfContentsProvider {
@@ -31,10 +23,10 @@ export class TableOfContentsProvider {
     this.document = document
   }
 
-  public async getToc (): Promise<TocEntry[]> {
+  public getToc (): TocEntry[] {
     if (!this.toc) {
       try {
-        this.toc = await this.buildToc(this.document)
+        this.toc = this.buildToc(this.document)
       } catch (e) {
         this.toc = []
       }
@@ -42,26 +34,24 @@ export class TableOfContentsProvider {
     return this.toc
   }
 
-  public async lookup (fragment: string): Promise<TocEntry | undefined> {
-    const toc = await this.getToc()
+  public lookup (fragment: string): TocEntry | undefined {
+    const toc = this.getToc()
     const slug = githubSlugifier.fromHeading(fragment)
     return toc.find((entry) => entry.slug.equals(slug))
   }
 
-  private async buildToc (document: SkinnyTextDocument): Promise<TocEntry[]> {
-    const toc: TocEntry[] = []
-    const adoc = await this.engine.load(document.uri, document.getText())
-
-    adoc.findBy({ context: 'section' }, function (section) {
-      toc.push({
-        slug: section.getId(),
+  private buildToc (textDocument: SkinnyTextDocument): TocEntry[] {
+    const { document: asciidoctorDocument } = this.engine.getEngine().load(textDocument)
+    const toc = asciidoctorDocument
+      .findBy({ context: 'section' })
+      .map((section) => ({
+        slug: new Slug(section.getId()),
         text: section.getTitle(),
         level: section.getLevel(),
         line: section.getLineNumber() - 1,
-        location: new vscode.Location(document.uri,
+        location: new vscode.Location(textDocument.uri,
           new vscode.Position(section.getLineNumber() - 1, 1)),
-      })
-    })
+      }))
 
     // Get full range of section
     return toc.map((entry, startIndex): TocEntry => {
@@ -72,13 +62,13 @@ export class TableOfContentsProvider {
           break
         }
       }
-      const endLine = typeof end === 'number' ? end : document.lineCount - 1
+      const endLine = typeof end === 'number' ? end : textDocument.lineCount - 1
       return {
         ...entry,
-        location: new vscode.Location(document.uri,
+        location: new vscode.Location(textDocument.uri,
           new vscode.Range(
             entry.location.range.start,
-            new vscode.Position(endLine, document.lineAt(endLine).range.end.character))),
+            new vscode.Position(endLine, textDocument.lineAt(endLine).range.end.character))),
       }
     })
   }

@@ -331,10 +331,8 @@ export namespace Import {
       if (dir === '') {
         const textDocument = vscode.window.activeTextEditor.document
         const extensionUri = vscode.Uri.file('') // won't be used anyway... needs refactoring!
-        const { document } = await new AsciidocParser(extensionUri).parseText(textDocument.getText(), textDocument)
-        if (document) {
-          dir = document.getAttribute('imagesdir')
-        }
+        const { document } = new AsciidocParser(extensionUri).load(textDocument)
+        dir = document.getAttribute('imagesdir')
       }
 
       return dir !== undefined ? dir : ''

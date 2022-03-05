@@ -11,15 +11,12 @@ import { similarArrayMatch } from '../similarArrayMatch'
 import { isSchemeBlacklisted } from '../linkSanitizer'
 
 const localize = nls.loadMessageBundle()
+
 export interface AsciidoctorLinkRegexes {
   [key: string]: RegExp
 }
 
-function normalizeLink (
-  document: vscode.TextDocument,
-  link: string,
-  base: string
-): vscode.Uri {
+function normalizeLink (document: vscode.TextDocument, link: string, base: string): vscode.Uri {
   const externalSchemeUri = getUriForLinkWithKnownExternalScheme(link)
   if (externalSchemeUri) {
     return externalSchemeUri
@@ -48,22 +45,16 @@ export default class LinkProvider implements vscode.DocumentLinkProvider {
     this.engine = engine
   }
 
-  public async provideDocumentLinks (
-    textDocument: vscode.TextDocument,
-    _token: vscode.CancellationToken
-  ): Promise<vscode.DocumentLink[]> {
+  public async provideDocumentLinks (textDocument: vscode.TextDocument, _token: vscode.CancellationToken): Promise<vscode.DocumentLink[]> {
     const asciidocParser = this.engine.getEngine()
-    const { document } = await asciidocParser.convertUsingJavascript(textDocument.getText(), textDocument, false, 'webview-html5', true)
-
-    const results: vscode.DocumentLink[] = []
-    const lines = document.getSourceLines()
+    const { document, baseDocumentIncludeItems } = asciidocParser.load(textDocument)
 
     // includes from the reader are resolved correctly but the line numbers may be offset and not exactly match the document
-    let baseDocumentProcessorIncludes = asciidocParser.baseDocumentIncludeItems
+    let baseDocumentProcessorIncludes = baseDocumentIncludeItems
     const includeDirective = /^(\\)?include::([^[][^[]*)\[([^\n]+)?\]$/
     // get includes from document text. These may be inside ifeval or ifdef but the line numbers are correct.
     const baseDocumentRegexIncludes = new Map()
-    lines.forEach((line, index) => {
+    document.getSourceLines().forEach((line, index) => {
       const match = includeDirective.exec(line)
       if (match) {
         // match[2] is the include reference
@@ -74,7 +65,9 @@ export default class LinkProvider implements vscode.DocumentLinkProvider {
     // find a corrected mapping for line numbers
     const betterIncludeMatching = similarArrayMatch(
       Array.from(baseDocumentRegexIncludes.keys()),
-      baseDocumentProcessorIncludes.map((entry) => { return entry.position })
+      baseDocumentProcessorIncludes.map((entry) => {
+        return entry.position
+      })
     )
 
     // update line items in reader results
@@ -83,6 +76,7 @@ export default class LinkProvider implements vscode.DocumentLinkProvider {
     })
 
     // create include links
+    const results: vscode.DocumentLink[] = []
     if (baseDocumentProcessorIncludes) {
       const base = path.dirname(textDocument.uri.fsPath)
       baseDocumentProcessorIncludes.forEach((entry) => {

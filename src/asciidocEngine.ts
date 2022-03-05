@@ -4,8 +4,7 @@
 
 import * as vscode from 'vscode'
 import { AsciidocContributions } from './asciidocExtensions'
-import { Slugifier } from './slugify'
-import { AsciidocParser } from './asciidocParser'
+import { AsciidocParser, AsciidoctorBuiltInBackends } from './asciidocParser'
 import { Asciidoctor } from '@asciidoctor/core'
 
 const FrontMatterRegex = /^---\s*[^]*?(-{3}|\.{3})\s*/
@@ -13,25 +12,32 @@ const FrontMatterRegex = /^---\s*[^]*?(-{3}|\.{3})\s*/
 export class AsciidocEngine {
   private ad?: AsciidocParser
 
-  private firstLine?: number
-
-  public constructor (
-    readonly extensionPreviewResourceProvider: AsciidocContributions,
-    private readonly slugifier: Slugifier,
-    private readonly errorCollection: vscode.DiagnosticCollection = null
-  ) {
+  public constructor (readonly extensionPreviewResourceProvider: AsciidocContributions, private readonly errorCollection: vscode.DiagnosticCollection = null) {
     this.extensionPreviewResourceProvider = extensionPreviewResourceProvider
-    this.slugifier = slugifier
     this.errorCollection = errorCollection
   }
 
-  private getEngine (): AsciidocParser {
+  public getEngine (): AsciidocParser {
     // singleton
     if (!this.ad) {
       this.ad = new AsciidocParser(this.extensionPreviewResourceProvider.extensionUri, this.errorCollection)
     }
 
     return this.ad
+  }
+
+  public async convertPreview (documentUri: vscode.Uri, stripFrontmatter: boolean, text: string, backend: string = 'webview-html5', context: vscode.ExtensionContext, editor: vscode.WebviewPanel): Promise<{ output: string, document?: Asciidoctor.Document }> {
+    if (stripFrontmatter) {
+      text = this.stripFrontmatter(text).text
+    }
+
+    const textDocument = await vscode.workspace.openTextDocument(documentUri)
+    return this.getEngine().convertPreview(text, textDocument, backend, context, editor)
+  }
+
+  public async export (documentUri: vscode.Uri, text: string, backend: AsciidoctorBuiltInBackends): Promise<{ output: string, document?: Asciidoctor.Document }> {
+    const textDocument = await vscode.workspace.openTextDocument(documentUri)
+    return this.getEngine().export(text, textDocument, backend)
   }
 
   private stripFrontmatter (text: string): { text: string, offset: number } {
@@ -43,30 +49,5 @@ export class AsciidocEngine {
       text = text.substr(frontMatter.length)
     }
     return { text, offset }
-  }
-
-  public async render (documentUri: vscode.Uri,
-    stripFrontmatter: boolean,
-    text: string, forHTML: boolean = false,
-    backend: string = 'webview-html5',
-    context?: vscode.ExtensionContext,
-    editor?: vscode.WebviewPanel): Promise<{output: string, document?: Asciidoctor.Document}> {
-    let offset = 0
-    if (stripFrontmatter) {
-      const asciidocContent = this.stripFrontmatter(text)
-      offset = asciidocContent.offset
-      text = asciidocContent.text
-    }
-
-    this.firstLine = offset
-    const textDocument = await vscode.workspace.openTextDocument(documentUri)
-    const { html: output, document } = await this.getEngine().parseText(text, textDocument, forHTML, backend, context, editor)
-    return { output, document }
-  }
-
-  public async load (documentUri: vscode.Uri, source: string): Promise<any> {
-    const textDocument = await vscode.workspace.openTextDocument(documentUri)
-    const { document } = await this.getEngine().parseText(source, textDocument)
-    return document
   }
 }
