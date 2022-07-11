@@ -1,0 +1,11 @@
+= Test
+
+// ../../asciidoc/images/sunset.svg
+image::asciidoc:sunset.svg[]
+
+// ../images/sunset.svg
+image::sunset.svg[]
+
+// ../../../../antora.yml = antora:3.0
+// ../../../../modules/asciidoc/images/sunset.svg
+image::3.0@antora:asciidoc:sunset.svg[]
