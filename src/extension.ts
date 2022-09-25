@@ -20,6 +20,7 @@ import { AttributeReferenceProvider } from './features/attributeReferenceProvide
 import { BuiltinDocumentAttributeProvider } from './features/builtinDocumentAttributeProvider'
 import AsciidocFoldingRangeProvider from './features/foldingProvider'
 import { AntoraSupportManager } from './features/antora/antoraSupport'
+import { watchAsciidoctorContentConfig } from './features/asciidoctorConfig'
 
 export function activate (context: vscode.ExtensionContext) {
   const contributionProvider = getAsciidocExtensionContributions(context)
@@ -45,6 +46,7 @@ export function activate (context: vscode.ExtensionContext) {
     },
   ]
 
+  watchAsciidoctorContentConfig()
   const contentProvider = new AsciidocContentProvider(engine, context)
   const symbolProvider = new AdocDocumentSymbolProvider(null)
   const previewManager = new AsciidocPreviewManager(contentProvider, logger, contributionProvider)
