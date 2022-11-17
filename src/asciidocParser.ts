@@ -18,6 +18,8 @@ const docbookConverter = require('@asciidoctor/docbook-converter')
 const processor = asciidoctor()
 const highlightjsBuiltInSyntaxHighlighter = processor.SyntaxHighlighter.for('highlight.js')
 const highlightjsAdapter = require('./highlightjs-adapter')
+const createExtensionRegistry = require('./features/antora/contrib/create-extension-registry.js')
+const resolveIncludeFile = require('@antora/asciidoc-loader/include/resolve-include-file')
 
 docbookConverter.register()
 
@@ -141,11 +143,13 @@ export class AsciidocParser {
     const memoryLogger = processor.MemoryLogger.create()
     processor.LoggerManager.setLogger(memoryLogger)
 
-    const registry = processor.Extensions.create()
-
-    // Antora IDs resolution:
     const antoraDocumentContext = await getAntoraDocumentContext(doc.uri, context.workspaceState)
-
+    const contentCatalog = antoraDocumentContext?.getContentCatalog()
+    const registry = createExtensionRegistry(processor, {
+      onInclude: contentCatalog
+        ? (doc, target, cursor) => resolveIncludeFile(target, antoraDocumentContext?.resourceContext, cursor, contentCatalog)
+        : () => undefined,
+    })
     const asciidoctorWebViewConverter = new AsciidoctorWebViewConverter(
       doc,
       editor,

@@ -90,6 +90,7 @@ export class AsciidoctorWebViewConverter {
   config: AsciidocPreviewConfiguration
   initialData: { [key: string]: any }
   state: object
+  html5WithAntoraSupportCreateConverter: any
 
   constructor (
     private readonly textDocument: SkinnyTextDocument,
@@ -120,6 +121,7 @@ export class AsciidoctorWebViewConverter {
       disableSecurityWarnings: cspArbiterShouldDisableSecurityWarnings,
     }
     this.state = state || {}
+    this.html5WithAntoraSupportCreateConverter = antoraDocumentContext?.createConverter()
   }
 
   // alias to $convert method to use AsciidoctorWebViewConverter as option in processor.convert method in Asciidoctor.js
@@ -185,14 +187,27 @@ export class AsciidoctorWebViewConverter {
       </body>
       </html>`
     }
-    if (nodeName === 'inline_anchor' && node.type === 'link') {
-      const href = isSchemeBlacklisted(node.target) ? '#' : node.target
-      const id = node.hasAttribute('id') ? ` id="${node.id}"` : ''
-      const role = node.hasAttribute('role') ? ` class="${node.getRole()}"` : ''
-      const title = node.hasAttribute('title') ? ` title="${node.title}"` : ''
-      return `<a href="${href}"${id}${role}${title} data-href="${href}">${node.text}</a>`
+    if (nodeName === 'inline_anchor') {
+      if (this.html5WithAntoraSupportCreateConverter !== undefined) {
+        return this.html5WithAntoraSupportCreateConverter.convert(node, transform)
+      }
+      if  (node.type === 'link') {
+        const href = isSchemeBlacklisted(node.target) ? '#' : node.target
+        const id = node.hasAttribute('id') ? ` id="${node.id}"` : ''
+        const role = node.hasAttribute('role') ? ` class="${node.getRole()}"` : ''
+        const title = node.hasAttribute('title') ? ` title="${node.title}"` : ''
+        return `<a href="${href}"${id}${role}${title} data-href="${href}">${node.text}</a>`
+      }
+    }
+    if (nodeName === 'inline_image') {
+      if (this.html5WithAntoraSupportCreateConverter !== undefined) {
+        return this.html5WithAntoraSupportCreateConverter.convert(node, transform)
+      }
     }
     if (nodeName === 'image') {
+      if (this.html5WithAntoraSupportCreateConverter !== undefined) {
+        return this.html5WithAntoraSupportCreateConverter.convert(node, transform)
+      }
       const nodeAttributes = node.getAttributes()
       const target = nodeAttributes.target
       const resourceUri = this.antoraDocumentContext?.resolveAntoraResourceIds(target, 'image')

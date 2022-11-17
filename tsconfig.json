@@ -11,7 +11,8 @@
       "es2019"
     ],
     "sourceMap": true,
-    "rootDir": "."
+    "rootDir": ".",
+    "allowJs": true
   },
   "include": [
     "src/**/*",

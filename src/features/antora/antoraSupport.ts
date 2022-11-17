@@ -8,13 +8,16 @@ import * as nls from 'vscode-nls'
 import aggregateContent from '@antora/content-aggregator'
 import classifyContent from '@antora/content-classifier'
 import ContentCatalog from '@antora/content-classifier/lib/content-catalog'
+const html5WithAntoraSupportCreateConverter = require('./contrib/create-converter.js')
 
 const localize = nls.loadMessageBundle()
 
 export interface AntoraResourceContext {
-  component: string;
-  version: string;
-  module: string;
+  src: {
+    component: string;
+    version: string;
+    module: string;
+  }
 }
 
 export class AntoraConfig {
@@ -25,11 +28,19 @@ export class AntoraConfig {
 export class AntoraDocumentContext {
   private PERMITTED_FAMILIES = ['attachment', 'example', 'image', 'page', 'partial']
 
-  constructor (private antoraContext: AntoraContext, private resourceContext: AntoraResourceContext) {
+  constructor (private antoraContext: AntoraContext, public resourceContext: AntoraResourceContext) {
+  }
+
+  public getContentCatalog(): ContentCatalog {
+    return this.antoraContext.contentCatalog
+  }
+
+  public createConverter() {
+    return html5WithAntoraSupportCreateConverter(this.resourceContext, this.antoraContext.contentCatalog, { relativizeResourceRefs: true })
   }
 
   public resolveAntoraResourceIds (id: string, defaultFamily: string): string | undefined {
-    const resource = this.antoraContext.contentCatalog.resolveResource(id, this.resourceContext, defaultFamily, this.PERMITTED_FAMILIES)
+    const resource = this.antoraContext.contentCatalog.resolveResource(id, this.resourceContext.src, defaultFamily, this.PERMITTED_FAMILIES)
     if (resource) {
       return resource.src?.abspath
     }
@@ -53,14 +64,13 @@ export class AntoraContext {
     }
     const page = this.contentCatalog.getByPath({
       component: config.name,
-      version: config.version,
+      version: config.version || '',
       path: path.relative(contentSourceRootPath, textDocumentUri.path),
-    }
-    )
+    })
     if (page === undefined) {
       return undefined
     }
-    return page.src
+    return page
   }
 }
 
