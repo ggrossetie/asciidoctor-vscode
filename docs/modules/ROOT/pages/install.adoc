@@ -1,0 +1,3 @@
+= Install
+
+The Visual Studio Code extension is published on {url-marketplace}[the Visual Studio Marketplace] and can be installed from within Visual Studio code by clicking on the Extensions icon in the _Activity Bar_ on the side of VS Code or the _View: Extensions_ command (kbd:[Ctrl+Shift+X] on Windows and Linux or kbd:[⇧+⌘+X] on macOS).

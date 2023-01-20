@@ -1,0 +1,4 @@
+= Overview of the Visual Code Studio Extension
+:navtitle: Overview
+
+This extension provides live preview, syntax highlighting and snippets for the AsciiDoc langage using Asciidoctor.

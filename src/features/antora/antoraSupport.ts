@@ -8,6 +8,7 @@ import * as nls from 'vscode-nls'
 import aggregateContent from '@antora/content-aggregator'
 import classifyContent from '@antora/content-classifier'
 import ContentCatalog from '@antora/content-classifier/lib/content-catalog'
+import { throws } from 'assert'
 
 const localize = nls.loadMessageBundle()
 
@@ -65,18 +66,25 @@ export class AntoraContext {
 }
 
 export class AntoraSupportManager implements vscode.Disposable {
+
+  private static instance: AntoraSupportManager
+  private workspaceState: Memento
   private readonly _disposables: vscode.Disposable[] = []
 
-  public constructor (private readonly context: Memento) {
-    this.context = context
+  public static async getInstance(workspaceState: Memento) {
+    if (this.instance !== undefined) {
+      this.instance.workspaceState = workspaceState
+      return this.instance
+    }
+    this.instance = new AntoraSupportManager()
+    this.instance.workspaceState = workspaceState
     const workspaceConfiguration = vscode.workspace.getConfiguration('asciidoc', null)
     // look for Antora support setting in workspace state
-    const workspaceState: vscode.Memento = this.context
     const isEnableAntoraSupportSettingDefined = workspaceState.get('antoraSupportSetting')
     if (isEnableAntoraSupportSettingDefined === true) {
       const enableAntoraSupport = workspaceConfiguration.get('antora.enableAntoraSupport')
       if (enableAntoraSupport === true) {
-        this.activate()
+        this.instance.registerFeatures()
       }
     } else if (isEnableAntoraSupportSettingDefined === undefined) {
       // choice has not been made
@@ -93,17 +101,51 @@ export class AntoraSupportManager implements vscode.Disposable {
           const enableAntoraSupport = answer === yesAnswer ? true : (answer === noAnswer ? false : undefined)
           await workspaceConfiguration.update('antora.enableAntoraSupport', enableAntoraSupport)
           if (enableAntoraSupport) {
-            this.activate()
+            this.instance.registerFeatures()
           }
           // do not ask again to avoid bothering users
           onDidOpenAsciiDocFileAskAntoraSupport.dispose()
         }
       })
-      this._disposables.push(onDidOpenAsciiDocFileAskAntoraSupport)
+      this.instance._disposables.push(onDidOpenAsciiDocFileAskAntoraSupport)
     }
   }
 
-  private activate (): void {
+  public static async isEnabled(workspaceState: Memento): Promise<Boolean> {
+    return (await AntoraSupportManager.getInstance(workspaceState)).isEnabled()
+  }
+
+  public isEnabled(): Boolean {
+    const workspaceConfiguration = vscode.workspace.getConfiguration('asciidoc', null)
+    // look for Antora support setting in workspace state
+    const isEnableAntoraSupportSettingDefined = this.workspaceState.get('antoraSupportSetting')
+    if (isEnableAntoraSupportSettingDefined === true) {
+      const enableAntoraSupport = workspaceConfiguration.get('antora.enableAntoraSupport')
+      if (enableAntoraSupport === true) {
+        return true
+      }
+    }
+    // choice has not been made or Antora is explicitly disabled
+    return false
+  }
+
+  public async getAttributes (textDocumentUri: Uri): Promise<{ [key: string]: string }> {
+    const antoraEnabled = this.isEnabled()
+    if (antoraEnabled) {
+      return getAttributes(textDocumentUri)
+    }
+    return {}
+  }
+
+  public async getAntoraDocumentContext (textDocumentUri: Uri): Promise<AntoraDocumentContext | undefined> {
+    const antoraEnabled = this.isEnabled()
+    if (antoraEnabled) {
+      return getAntoraDocumentContext(textDocumentUri, this.workspaceState)
+    }
+    return undefined
+  }
+
+  private registerFeatures (): void {
     const completionProvider = vscode.languages.registerCompletionItemProvider(
       {
         language: 'asciidoc',
@@ -159,11 +201,11 @@ export async function getAntoraConfig (textDocumentUri: Uri): Promise<AntoraConf
 }
 
 export async function getAttributes (textDocumentUri: Uri): Promise<{ [key: string]: string }> {
-  const doc = await getAntoraConfig(textDocumentUri)
-  if (doc === undefined) {
-    return {}
-  }
-  return doc.config.asciidoc?.attributes || {}
+    const antoraConfig = await getAntoraConfig(textDocumentUri)
+    if (antoraConfig === undefined) {
+      return {}
+    }
+    return antoraConfig.config.asciidoc?.attributes || {}
 }
 
 export async function getAntoraDocumentContext (textDocumentUri: Uri, workspaceState: Memento): Promise<AntoraDocumentContext | undefined> {
@@ -181,11 +223,66 @@ export async function getAntoraDocumentContext (textDocumentUri: Uri, workspaceS
 
 export async function getContentCatalog (textDocumentUri: Uri, workspaceState: Memento): Promise<ContentCatalog | undefined> {
   try {
+    const activeAntoraConfig = await getActiveAntoraConfig(textDocumentUri, workspaceState)
+    if (activeAntoraConfig === undefined) {
+      return undefined
+    }
+    const contentSourceRootPath = path.dirname(activeAntoraConfig.fsPath)
+    const contentSourceRepositoryRootPath = workspace.getWorkspaceFolder(activeAntoraConfig).uri.fsPath
+    // https://docs.antora.org/antora/latest/playbook/content-source-start-path/#start-path-key
+    const startPath = path.relative(contentSourceRepositoryRootPath, contentSourceRootPath)
+    const files = await Promise.all((await vscode.workspace.findFiles(startPath + '/modules/**/*')).map(async (file) => {
+      return {
+        // base '/'
+        // basename 'writer-guide.adoc'
+        // contents
+        // cwd '/'
+        // dirname modules
+        // extname '.adoc'
+        // path modules/writer-guide.adoc
+        // relative modules/writer-guide.adoc
+        // stem writer-guide
+        // symlink null
+        // src
+        // - abspath
+        // - basename
+        // - editUrl
+        // - extname .adoc
+        // - fileUri
+        // - origin
+        // - path
+        // - stem
+        cwd: startPath,
+        base: startPath,
+        path: file.path,
+        contents: Buffer.from((await vscode.workspace.fs.readFile(Uri.file(file.fsPath)))),
+        src: {
+        extname: path.extname(file.path)
+        }
+      }
+    }))
+
     const playbook = await createPlaybook(textDocumentUri, workspaceState)
     if (playbook === undefined) {
       return undefined
     }
-    const contentAggregate = await aggregateContent(playbook)
+    const contentAggregate1 = await aggregateContent(playbook)
+    const contentAggregate = [
+      {
+        name: "api",
+        version: "1.0",
+        title: "Antora",
+        asciidoc: {
+          attributes: {
+            "source-language": "asciidoc@",
+            xrefstyle: "short@",
+            "example-caption": false,
+            experimental: "",
+          },
+        },
+        files: files
+      },
+    ]
     return classifyContent(playbook, contentAggregate)
   } catch (e) {
     console.log(`Unable to create contentCatalog : ${e}`)

@@ -1,0 +1,12 @@
+title: Visual Studio Code Extension
+name: vscode-extension
+version: ~
+nav:
+  - modules/ROOT/nav.adoc
+asciidoc:
+  attributes:
+    page-pagination: ''
+    experimental: ''
+    idprefix: ''
+    idseparator: '-'
+    url-marketplace: https://marketplace.visualstudio.com/items?itemName=asciidoctor.asciidoctor-vscode
