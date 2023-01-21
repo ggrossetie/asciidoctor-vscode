@@ -8,6 +8,21 @@ import {
   sortFilesAndDirectories,
 } from '../util/file'
 
+
+const VALID_IMAGE_EXTS = [
+  '.png',
+  '.svg',
+  '.jpeg',
+  '.jfif',
+   '.pjpeg', 
+  '.pjp',
+  '.jpg',
+  '.bmp',
+  '.webp',
+  '.gif',
+  '.apng',
+  '.avif',
+]
 export const AsciidocProvider = {
   provideCompletionItems,
 }
@@ -66,7 +81,7 @@ async function provide (
     kind: vscode.CompletionItemKind.Folder,
     sortText: '10_..',
   }
-  const globalVariableDefinitions = documentText.match(/:\S+:.*/g)
+  const globalVariableDefinitions = documentText.match(/^:\S+:.*/g)
 
   let variablePathSubstitutions = []
   // TODO: prevent editor.autoClosingBrackets at this point until finished inserting
@@ -87,7 +102,13 @@ async function provide (
   return [
     levelUpCompletionItem,
     ...variablePathSubstitutions,
-    ...items.map((child) => {
+    ...items.filter((item) => {
+      if (context.textFullLine.endsWith('image:') || context.textFullLine.endsWith('image::')) {
+        return VALID_IMAGE_EXTS.includes(path.extname(item.file).toLowerCase())
+      } else {
+        return !VALID_IMAGE_EXTS.includes(path.extname(item.file).toLowerCase())
+      }
+    }).map((child) => {
       const result = createPathCompletionItem(child)
       result.insertText = result.kind === vscode.CompletionItemKind.File ? child.file + '[]' : child.file
       if (result.kind === vscode.CompletionItemKind.Folder) {

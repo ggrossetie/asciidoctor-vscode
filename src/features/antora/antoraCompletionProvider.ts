@@ -11,7 +11,7 @@ export default class AntoraCompletionProvider {
       const completionItem = new vscode.CompletionItem({
         label: key,
         description: value,
-      }, vscode.CompletionItemKind.Text)
+      }, vscode.CompletionItemKind.File)
       let insertText = value
       insertText = prefix !== '{' ? `{${insertText}` : insertText
       insertText = suffix !== '}' ? `${insertText}}` : insertText
