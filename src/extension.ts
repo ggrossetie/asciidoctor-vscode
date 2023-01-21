@@ -11,6 +11,7 @@ import AdocDocumentSymbolProvider from './features/documentSymbolProvider'
 import { AsciidocContentProvider } from './features/previewContentProvider'
 import { AsciidocPreviewManager } from './features/previewManager'
 import AsciidocWorkspaceSymbolProvider from './features/workspaceSymbolProvider'
+import ImageDefinitionProvider from './providers/imageDefinitionProvider'
 import { Logger } from './logger'
 import { AsciidocEngine } from './asciidocEngine'
 import { getAsciidocExtensionContributions } from './asciidocExtensions'
@@ -54,6 +55,7 @@ export async function activate (context: vscode.ExtensionContext) {
   context.subscriptions.push(previewManager)
   context.subscriptions.push(new AsciidocFileIncludeAutoCompletionMonitor())
   context.subscriptions.push(await AntoraSupportManager.getInstance(context.workspaceState))
+  context.subscriptions.push(vscode.languages.registerDefinitionProvider(selector, new ImageDefinitionProvider()))
 
   context.subscriptions.push(vscode.languages.registerDocumentSymbolProvider(selector, symbolProvider))
   context.subscriptions.push(vscode.languages.registerDocumentLinkProvider(selector, new LinkProvider()))

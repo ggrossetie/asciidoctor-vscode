@@ -8,13 +8,12 @@ import {
   sortFilesAndDirectories,
 } from '../util/file'
 
-
 const VALID_IMAGE_EXTS = [
   '.png',
   '.svg',
   '.jpeg',
   '.jfif',
-   '.pjpeg', 
+  '.pjpeg',
   '.pjp',
   '.jpg',
   '.bmp',
