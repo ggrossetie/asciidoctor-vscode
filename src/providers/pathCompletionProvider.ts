@@ -1,37 +1,84 @@
-import { CompletionItemProvider } from 'vscode'
+import { Position, Range } from 'vscode'
+import ospath from 'path'
 
-enum CompletionContextKind {
+export enum CompletionContextKind {
   /** `link:target[]` */
-  Link,
+  Link = 'link',
 
   /** `xref::target.adoc#id[]` */
-  Xref,
+  Xref = 'xref',
 
   /** `include::target.ext[]` */
-  Include,
+  Include = 'include',
 
   /**
    * - `image::target.ext[]`
    * - `image:target.ext[]` (inline)
    */
-  Image,
+  Image = 'image',
 
   /** `video::target.ext[]` */
-  Video,
+  Video = 'video',
 
   /** `audio::target.ext[] */
-  Audio,
+  Audio = 'audio',
 }
 
-interface PathCompletionContext {
+export interface PathCompletionContext {
   readonly kind: CompletionContextKind;
+
+  readonly target: string;
+
+  readonly macroNameRange: Range;
+
+  readonly attributeListStartPosition?: Position;
+
+  readonly attributeListEndPosition?: Position;
 }
 
-class PathCompletionProvider {
-  provideCompletionItems (pathCompletionContext: PathCompletionContext) {
+export class PathCompletionProvider {
+  async provideCompletionItems (pathCompletionContext: PathCompletionContext) {
     const supportedExtensions = getSupportedExtensions(pathCompletionContext.kind)
-
+    const targetInfo = ospath.parse(pathCompletionContext.target)
+    const parentDir = targetInfo.dir || '.'
+    console.log({
+      parentDir,
+      supportedExtensions,
+    })
+    return []
   }
+}
+
+const pathCompletionRx = /(?<macro>image|link|xref|video|audio)::?(?<target>[^[\]\s:][^[\]]*)$/
+const attributeListStartRx = /[^[\]\s]*(?<!\\)\[/
+
+export function getPathCompletionContext (lineText: string, position: Position): PathCompletionContext | undefined {
+  const before = lineText.substring(0, position.character)
+  const after = lineText.substring(position.character, lineText.length)
+  const macroFound = before.match(pathCompletionRx)
+  if (macroFound) {
+    let macroNameRange
+    if (macroFound.index === 0) {
+      // block
+      macroNameRange = new Range(position.line, 0, position.line, macroFound.groups.macro.length + 2)
+    } else {
+      // inline
+      macroNameRange = new Range(position.line, macroFound.index, position.line, macroFound.index + macroFound.groups.macro.length + 1)
+    }
+    const kind = macroFound.groups.macro as CompletionContextKind
+    const attributeListFound = after.match(attributeListStartRx)
+    let attributeListStartPosition
+    if (attributeListFound) {
+      attributeListStartPosition = new Position(position.line, position.character + attributeListFound[0].length)
+    }
+    return {
+      kind,
+      target: macroFound.groups.target,
+      macroNameRange,
+      attributeListStartPosition,
+    }
+  }
+  return undefined
 }
 
 function getSupportedExtensions (completionContextKind: CompletionContextKind): string[] {

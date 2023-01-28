@@ -143,8 +143,9 @@ export class AsciidocParser {
     const registry = processor.Extensions.create()
 
     // Antora IDs resolution:
-    const antoraDocumentContext = await getAntoraDocumentContext(doc.uri, context.workspaceState)
-
+    const antoraDocumentContext = (await AntoraSupportManager.isEnabled(context.workspaceState))
+      ? await getAntoraDocumentContext(doc.uri)
+      : undefined
     const asciidoctorWebViewConverter = new AsciidoctorWebViewConverter(
       doc,
       editor,

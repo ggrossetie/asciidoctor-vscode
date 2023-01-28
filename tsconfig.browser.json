@@ -4,6 +4,8 @@
     "types": []
   },
   "exclude": [
-    "./src/test/**"
+    "./src/test/**",
+    "./src/**/__tests__/**",
+    "./src/**/__mocks__/**"
   ]
 }

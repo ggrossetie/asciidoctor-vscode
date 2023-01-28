@@ -11,7 +11,8 @@ module.exports = {
     "standard"
   ],
   "env": {
-    "mocha": true
+    "mocha": true,
+    "jest": true
   },
   "rules": {
     "arrow-parens": ["error", "always"],

@@ -133,7 +133,7 @@ export class AntoraSupportManager implements vscode.Disposable {
     return {}
   }
 
-  public isEnabled (): Boolean {
+  public isEnabled (): boolean {
     const workspaceConfiguration = vscode.workspace.getConfiguration('asciidoc', null)
     // look for Antora support setting in workspace state
     const isEnableAntoraSupportSettingDefined = AntoraSupportManager.workspaceState.get('antoraSupportSetting')
@@ -150,7 +150,7 @@ export class AntoraSupportManager implements vscode.Disposable {
   public async getAntoraDocumentContext (textDocumentUri: Uri): Promise<AntoraDocumentContext | undefined> {
     const antoraEnabled = this.isEnabled()
     if (antoraEnabled) {
-      return getAntoraDocumentContext(textDocumentUri, AntoraSupportManager.workspaceState)
+      return getAntoraDocumentContext(textDocumentUri)
     }
     return undefined
   }
@@ -236,11 +236,7 @@ export async function getAttributes (textDocumentUri: Uri): Promise<{ [key: stri
   return antoraConfig.config.asciidoc?.attributes || {}
 }
 
-export async function getAntoraDocumentContext (textDocumentUri: Uri, workspaceState: Memento): Promise<AntoraDocumentContext | undefined> {
-  const antoraSupportManager = await AntoraSupportManager.getInstance(workspaceState)
-  if (!antoraSupportManager.isEnabled()) {
-    return undefined
-  }
+export async function getAntoraDocumentContext (textDocumentUri: Uri): Promise<AntoraDocumentContext | undefined> {
   const antoraConfigs = await getAntoraConfigs()
   const contentAggregate = await Promise.all(antoraConfigs
     .filter((antoraConfig) => antoraConfig.config !== undefined && 'name' in antoraConfig.config && 'version' in antoraConfig.config)

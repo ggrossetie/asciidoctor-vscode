@@ -1,50 +1,46 @@
-import { CancellationToken, CompletionContext, CompletionItem, CompletionItemKind, CompletionItemProvider, Memento, Position, ProviderResult, TextDocument } from 'vscode'
-import { getAntoraDocumentContext } from '../features/antora/antoraSupport'
-
-interface CompletionAction {
-  lineText: string;
-  position: Position;
-}
+import { /*CancellationToken, CompletionContext,*/ CompletionItem, CompletionItemKind, CompletionItemProvider, Memento, Position, TextDocument, Uri } from 'vscode'
+import { AntoraSupportManager, getAntoraDocumentContext } from '../features/antora/antoraSupport'
+import { CompletionContextKind, getPathCompletionContext, PathCompletionContext, PathCompletionProvider } from './pathCompletionProvider'
 
 export class ImageCompletionProvider implements CompletionItemProvider {
+  private pathCompletionProvider: PathCompletionProvider
+
   constructor (private readonly workspaceState: Memento) {
+    this.pathCompletionProvider = new PathCompletionProvider()
   }
 
-  async provideCompletionItems (textDocument: TextDocument, position: Position, token: CancellationToken, context: CompletionContext): Promise<CompletionItem[]> {
-    const completionAction = this.completionAction(textDocument, position)
-    const lineText = completionAction.lineText
-    const prefix = lineText.substring(position.character - 7, position.character)
-    if (!prefix.endsWith('image:') && !prefix.endsWith('image::')) {
+  async provideCompletionItems (textDocument: TextDocument, position: Position /*, token: CancellationToken, context: CompletionContext*/): Promise<CompletionItem[]> {
+    const lineText = textDocument.lineAt(position.line).text
+    const pathCompletionContext = getPathCompletionContext(lineText, position)
+    if (pathCompletionContext.kind !== CompletionContextKind.Image) {
       return []
     }
-    const antoraDocumentContext = await getAntoraDocumentContext(textDocument.uri, this.workspaceState)
-    if (antoraDocumentContext) {
-      return this.provideAntoraImageCompletionItems(antoraDocumentContext, completionAction)
+    const antoraSupportManager = await AntoraSupportManager.getInstance(this.workspaceState)
+    if (antoraSupportManager.isEnabled()) {
+      return provideAntoraCompletionItems(textDocument.uri, pathCompletionContext)
     }
-    return []
+    return this.pathCompletionProvider.provideCompletionItems(pathCompletionContext)
   }
+}
 
-  private provideAntoraImageCompletionItems (antoraDocumentContext, completionContext: CompletionAction): CompletionItem[] {
-    const charPosition = completionContext.position.character
-    const suffix = completionContext.lineText.substring(charPosition, charPosition + 1)
-    return antoraDocumentContext.getImages().map((image) => {
-      const value = image.basename
-      const completionItem = new CompletionItem({
-        label: value,
-        description: `${image.src.version}@${image.src.component}:${image.src.module}:${image.src.relative}`,
-      }, CompletionItemKind.Text)
-      let insertText = value
-      insertText = suffix !== '[' ? `${insertText}[]` : insertText
-      completionItem.insertText = insertText
-      return completionItem
-    })
+async function provideAntoraCompletionItems (textDocumentUri: Uri, pathCompletionContext: PathCompletionContext): Promise<CompletionItem[]> {
+  const antoraDocumentContext = await getAntoraDocumentContext(textDocumentUri)
+  if (antoraDocumentContext) {
+    return provideAntoraImageCompletionItems(antoraDocumentContext, pathCompletionContext)
   }
+  return []
+}
 
-  private completionAction (textDocument: TextDocument, position: Position): CompletionAction {
-    const lineText = textDocument.lineAt(position).text
-    return {
-      lineText,
-      position,
-    }
-  }
+function provideAntoraImageCompletionItems (antoraDocumentContext, pathCompletionContext: PathCompletionContext): CompletionItem[] {
+  return antoraDocumentContext.getImages().map((image) => {
+    const value = image.basename
+    const completionItem = new CompletionItem({
+      label: value,
+      description: `${image.src.version}@${image.src.component}:${image.src.module}:${image.src.relative}`,
+    }, CompletionItemKind.Text)
+    let insertText = value
+    insertText = pathCompletionContext.attributeListStartPosition ? insertText : `${insertText}[]`
+    completionItem.insertText = insertText
+    return completionItem
+  })
 }
