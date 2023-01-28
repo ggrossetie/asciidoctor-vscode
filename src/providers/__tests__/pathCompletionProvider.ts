@@ -1,9 +1,18 @@
 import { CompletionContextKind, getPathCompletionContext, PathCompletionProvider } from '../pathCompletionProvider'
-import { Position, Range } from 'vscode'
+import { CompletionContext, CompletionTriggerKind, FileType, Position, Range, workspace } from 'vscode'
+import { URI } from 'vscode-uri'
+import { Mock } from 'jest-mock'
 
 test('relative image path', () => {
-  const completionContext = getPathCompletionContext('image::../images/sunset.jpg[Sunset,200,100]', new Position(1, 10))
+  const completionContext = getPathCompletionContext('image::../images/sunset.jpg[Sunset,200,100]', new Position(1, 10), {
+    triggerKind: CompletionTriggerKind.Invoke,
+    triggerCharacter: undefined,
+  })
   expect(completionContext).toEqual({
+    context: {
+      triggerKind: 0,
+      triggerCharacter: undefined,
+    },
     kind: 'image',
     target: '../',
     macroNameRange: {
@@ -20,8 +29,15 @@ test('relative image path', () => {
 })
 
 test('inline image', () => {
-  const completionContext = getPathCompletionContext('What a beautiful sunset! image:sunset.jpg[Sunset,150,150,role=right]', new Position(1, 33))
+  const completionContext = getPathCompletionContext('What a beautiful sunset! image:sunset.jpg[Sunset,150,150,role=right]', new Position(1, 33), {
+    triggerKind: CompletionTriggerKind.Invoke,
+    triggerCharacter: undefined,
+  })
   expect(completionContext).toEqual({
+    context: {
+      triggerKind: 0,
+      triggerCharacter: undefined,
+    },
     kind: 'image',
     target: 'su',
     macroNameRange: {
@@ -38,8 +54,27 @@ test('inline image', () => {
 })
 
 test('provide completion items', async () => {
-  const items = await new PathCompletionProvider().provideCompletionItems({
+  (workspace.fs.readDirectory as Mock<(uri: URI) => Promise<[string, FileType][]>>).mockReturnValue(Promise.resolve([
+    ['index.adoc', FileType.File],
+    ['README.adoc', FileType.File],
+    ['.gitignore', FileType.File],
+    ['index.js', FileType.File],
+    ['wave.png', FileType.File],
+    ['sunset.jpeg', FileType.File],
+    ['sunback.png', FileType.File],
+    ['sunbean.jpg', FileType.File],
+    ['sunglow.gif', FileType.File],
+    ['solar.js', FileType.File],
+    ['sun.java', FileType.File],
+    ['images', FileType.Directory],
+    ['test', FileType.Directory],
+    ['lib', FileType.Directory],
+  ]))
+  const items = await new PathCompletionProvider().provideCompletionItems(URI.file('test.adoc'), {
     kind: CompletionContextKind.Image,
+    context: {
+      triggerKind: CompletionTriggerKind.Invoke,
+    } as CompletionContext,
     target: 'su',
     macroNameRange: new Range(
       1,
@@ -52,5 +87,5 @@ test('provide completion items', async () => {
       42
     ),
   })
-  console.log({ items })
+  expect(items.length).toEqual(8)
 })
