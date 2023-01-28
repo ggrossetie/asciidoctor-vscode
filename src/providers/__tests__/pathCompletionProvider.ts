@@ -1,5 +1,5 @@
-import { getPathCompletionContext } from '../pathCompletionProvider'
-import { Position } from 'vscode'
+import { CompletionContextKind, getPathCompletionContext, PathCompletionProvider } from '../pathCompletionProvider'
+import { Position, Range } from 'vscode'
 
 test('relative image path', () => {
   const completionContext = getPathCompletionContext('image::../images/sunset.jpg[Sunset,200,100]', new Position(1, 10))
@@ -35,4 +35,22 @@ test('inline image', () => {
       character: 42,
     },
   })
+})
+
+test('provide completion items', async () => {
+  const items = await new PathCompletionProvider().provideCompletionItems({
+    kind: CompletionContextKind.Image,
+    target: 'su',
+    macroNameRange: new Range(
+      1,
+      25,
+      1,
+      31
+    ),
+    attributeListStartPosition: new Position(
+      1,
+      42
+    ),
+  })
+  console.log({ items })
 })

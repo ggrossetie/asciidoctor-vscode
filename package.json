@@ -611,7 +611,7 @@
     "lint": "eslint 'src/**/*.ts' 'preview-src/**/*.ts' --format unix",
     "lint:fix": "npm run lint -- --fix",
     "pretest": "npm run build",
-    "test": "jest"
+    "test": "jest && node ./dist/src/test/runTest.js"
   },
   "devDependencies": {
     "@babel/preset-env": "^7.20.2",
