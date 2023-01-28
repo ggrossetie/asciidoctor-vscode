@@ -1,4 +1,4 @@
-import { CompletionContextKind, getPathCompletionContext, PathCompletionProvider } from '../pathCompletionProvider'
+import { CompletionContextKind, getPathCompletionContext, getReference, PathCompletionProvider } from '../pathCompletionProvider'
 import { CompletionContext, CompletionTriggerKind, FileType, Position, Range, workspace } from 'vscode'
 import { URI } from 'vscode-uri'
 import { Mock } from 'jest-mock'
@@ -88,4 +88,15 @@ test('provide completion items', async () => {
     ),
   })
   expect(items.length).toEqual(8)
+})
+
+test('get reference', () => {
+  expect(getReference('/path/to/dir/')).toEqual('/path/to/dir')
+  expect(getReference('/path/to/f')).toEqual('/path/to')
+  expect(getReference('')).toEqual('.')
+  expect(getReference('.')).toEqual('.')
+  expect(getReference('../images/')).toEqual('../images')
+  expect(getReference('./src/main/../resources/img/')).toEqual('src/resources/img')
+  expect(getReference('', 'images')).toEqual('images')
+  expect(getReference('/to/dir/', 'images')).toEqual('images/to/dir')
 })

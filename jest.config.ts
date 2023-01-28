@@ -7,6 +7,6 @@ export default {
   clearMocks: true,
   coverageProvider: 'v8',
   testMatch: [
-    '**/__tests__/**/*.[jt]s?(x)',
+    '**/__tests__/**/*.ts',
   ],
 }

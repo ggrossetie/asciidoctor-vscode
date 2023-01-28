@@ -1,4 +1,4 @@
-import { CompletionContext, CompletionItemKind, FileType, Position, Range, workspace } from 'vscode'
+import { CompletionContext, CompletionItemKind, FileType, Position, Range, Uri, workspace } from 'vscode'
 import ospath, { dirname, resolve } from 'path'
 import { URI, Utils } from 'vscode-uri'
 
@@ -27,23 +27,26 @@ export enum CompletionContextKind {
 
 export interface PathCompletionContext {
 
-  readonly context: CompletionContext;
-  readonly kind: CompletionContextKind;
+  readonly context: CompletionContext
 
-  readonly target: string;
+  readonly kind: CompletionContextKind
 
-  readonly macroNameRange: Range;
+  readonly target: string
 
-  readonly attributeListStartPosition?: Position;
+  readonly macroNameRange: Range
 
-  readonly attributeListEndPosition?: Position;
+  readonly attributeListStartPosition?: Position
+
+  readonly attributeListEndPosition?: Position
+
+  baseDir?: string
 }
 
 export class PathCompletionProvider {
-  async provideCompletionItems (documentUri: URI, pathCompletionContext: PathCompletionContext) {
+  async provideCompletionItems (documentUri: Uri, pathCompletionContext: PathCompletionContext) {
     const supportedExtensions = getSupportedExtensions(pathCompletionContext.kind)
-    const targetInfo = ospath.parse(pathCompletionContext.target)
-    const parentDir = resolveReference(documentUri, targetInfo.dir || '.')
+    const ref = getReference(pathCompletionContext.target, pathCompletionContext.baseDir)
+    const parentDir = resolveReference(documentUri, ref)
     if (!parentDir) {
       return []
     }
@@ -53,14 +56,13 @@ export class PathCompletionProvider {
       .map(([name, type]) => {
         const isDir = type === FileType.Directory
         const newText = name + (isDir ? '/' : '')
+        const label = isDir ? name + '/' : name
         return {
-          label: isDir ? name + '/' : name,
+          label,
+          sortText: `00_${label}`,
           kind: isDir ? CompletionItemKind.Folder : CompletionItemKind.File,
-          textEdit: {
-            newText,
-            //insert: insertRange, // until next path segment (i.e., /)
-            //replace: replacementRange, // until attribute list start (or end of macro)
-          },
+          insertText: isDir ? newText : `${newText}[]`,
+          // TODO: use TextEdit to replace or insert new text
           command: isDir
             ? {
               command: 'editor.action.triggerSuggest',
@@ -72,7 +74,7 @@ export class PathCompletionProvider {
   }
 }
 
-function resolveReference (documentUri: URI, ref: string): URI | undefined {
+export function resolveReference (documentUri: URI, ref: string): URI | undefined {
   if (ref.startsWith('/')) {
     const workspaceFolder = getWorkspaceFolder(documentUri)
     if (workspaceFolder) {
@@ -83,6 +85,18 @@ function resolveReference (documentUri: URI, ref: string): URI | undefined {
   }
 
   return resolvePath(documentUri, ref)
+}
+
+export function getReference (target: string, baseDir?: string): string {
+  const path = baseDir
+    ? ospath.join(baseDir.endsWith(ospath.posix.sep) ? baseDir : `${baseDir}${ospath.posix.sep}`, target)
+    : target
+  const targetInfo = ospath.parse(ospath.normalize(path))
+  const dir = targetInfo.dir || '.'
+  if (path.endsWith(ospath.posix.sep)) {
+    return ospath.join(dir, targetInfo.base)
+  }
+  return dir
 }
 
 function getWorkspaceFolder (docUri: URI): URI | undefined {
@@ -117,12 +131,11 @@ function resolvePath (root: URI, ref: string): URI | undefined {
       })
     }
   } catch (err) {
-    console.log({ err })
     return undefined
   }
 }
 
-const pathCompletionRx = /(?<macro>image|link|xref|video|audio)::?(?<target>[^[\]\s:][^[\]]*)$/
+const pathCompletionRx = /(?<macro>image|link|xref|video|audio)::?(?<target>[^[\]\s:][^[\]]*|)$/
 const attributeListStartRx = /[^[\]\s]*(?<!\\)\[/
 
 export function getPathCompletionContext (lineText: string, position: Position, completionContext: CompletionContext): PathCompletionContext | undefined {
@@ -131,14 +144,15 @@ export function getPathCompletionContext (lineText: string, position: Position, 
   const macroFound = before.match(pathCompletionRx)
   if (macroFound) {
     let macroNameRange
+    const macro = macroFound.groups.macro
     if (macroFound.index === 0) {
       // block
-      macroNameRange = new Range(position.line, 0, position.line, macroFound.groups.macro.length + 2)
+      macroNameRange = new Range(position.line, 0, position.line, macro.length + 2)
     } else {
       // inline
-      macroNameRange = new Range(position.line, macroFound.index, position.line, macroFound.index + macroFound.groups.macro.length + 1)
+      macroNameRange = new Range(position.line, macroFound.index, position.line, macroFound.index + macro.length + 1)
     }
-    const kind = macroFound.groups.macro as CompletionContextKind
+    const kind = macro as CompletionContextKind
     const attributeListFound = after.match(attributeListStartRx)
     let attributeListStartPosition
     if (attributeListFound) {
@@ -147,7 +161,7 @@ export function getPathCompletionContext (lineText: string, position: Position, 
     return {
       context: completionContext,
       kind,
-      target: macroFound.groups.target,
+      target: macroFound.groups.target || '',
       macroNameRange,
       attributeListStartPosition,
     }

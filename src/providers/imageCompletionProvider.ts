@@ -1,6 +1,7 @@
-import { /*CancellationToken, CompletionContext,*/ CompletionItem, CompletionItemKind, CompletionItemProvider, Memento, Position, TextDocument, Uri } from 'vscode'
+import { CancellationToken, CompletionContext, CompletionItem, CompletionItemKind, CompletionItemProvider, Memento, Position, TextDocument, Uri } from 'vscode'
 import { AntoraSupportManager, getAntoraDocumentContext } from '../features/antora/antoraSupport'
 import { CompletionContextKind, getPathCompletionContext, PathCompletionContext, PathCompletionProvider } from './pathCompletionProvider'
+import { AsciiDocTextDocument } from '../features/AsciiDocTextDocument'
 
 export class ImageCompletionProvider implements CompletionItemProvider {
   private pathCompletionProvider: PathCompletionProvider
@@ -9,17 +10,23 @@ export class ImageCompletionProvider implements CompletionItemProvider {
     this.pathCompletionProvider = new PathCompletionProvider()
   }
 
-  async provideCompletionItems (textDocument: TextDocument, position: Position /*, token: CancellationToken, context: CompletionContext*/): Promise<CompletionItem[]> {
+  async provideCompletionItems (textDocument: TextDocument, position: Position, token: CancellationToken, context: CompletionContext): Promise<CompletionItem[]> {
     const lineText = textDocument.lineAt(position.line).text
-    const pathCompletionContext = getPathCompletionContext(lineText, position)
-    if (pathCompletionContext.kind !== CompletionContextKind.Image) {
+    const pathCompletionContext = getPathCompletionContext(lineText, position, context)
+    if (pathCompletionContext?.kind !== CompletionContextKind.Image) {
       return []
     }
     const antoraSupportManager = await AntoraSupportManager.getInstance(this.workspaceState)
     if (antoraSupportManager.isEnabled()) {
       return provideAntoraCompletionItems(textDocument.uri, pathCompletionContext)
     }
-    return this.pathCompletionProvider.provideCompletionItems(pathCompletionContext)
+    const asciiDocTextDocument = new AsciiDocTextDocument(textDocument, this.workspaceState)
+    const doc = await asciiDocTextDocument.getDocument()
+    const imagesDir = doc.getAttribute('imagesdir')
+    if (imagesDir) {
+      pathCompletionContext.baseDir = imagesDir
+    }
+    return this.pathCompletionProvider.provideCompletionItems(textDocument.uri, pathCompletionContext)
   }
 }
 

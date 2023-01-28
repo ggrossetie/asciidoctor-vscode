@@ -28,7 +28,7 @@ export async function provideCompletionItems (
  * @param context
  */
 function shouldProvide (context: Context): boolean {
-  return /(include::|image::|image:)\S*/gi.test(context.textFullLine)
+  return /(include::)\S*/gi.test(context.textFullLine)
 }
 
 /**
