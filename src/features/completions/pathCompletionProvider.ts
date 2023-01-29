@@ -1,6 +1,7 @@
 import { CompletionContext, CompletionItem, CompletionItemKind, FileType, Position, Range, Uri, workspace } from 'vscode'
 import ospath, { dirname, resolve } from 'path'
 import { URI, Utils } from 'vscode-uri'
+import vscode from 'vscode'
 
 export enum CompletionContextKind {
   /** `link:target[]` */
@@ -53,16 +54,38 @@ export class PathCompletionProvider {
       return []
     }
     const files = await workspace.fs.readDirectory(parentDir)
-    return files
-      .filter(([name, type]) => (type === FileType.File && supportedExtensions.includes(ospath.extname(name).toLowerCase())) || type !== FileType.File)
+    const levelUpCompletionItem: vscode.CompletionItem = {
+      label: '../',
+      kind: vscode.CompletionItemKind.Folder,
+      sortText: '02_..',
+      command: {
+        command: 'editor.action.triggerSuggest',
+        title: '',
+      },
+    }
+    // sort order
+    // files
+    // hidden files
+    // directories
+    // ../
+    // hidden directories
+    const completionItems = files
+      .filter(([name, type]) => type !== FileType.File || !supportedExtensions || (type === FileType.File && supportedExtensions.includes(ospath.extname(name).toLowerCase())))
       .map(([name, type]) => {
         const isDir = type === FileType.Directory
         const newText = name + (isDir ? '/' : '')
         const label = isDir ? name + '/' : name
         const attributeListStartPosition = pathCompletionContext.attributeListStartPosition
+        let order = label.startsWith('.')
+          ? type === FileType.File
+            ? 2
+            : 3
+          ? 0
+          : 1
+        if (label.startsWith('.'))
         return {
           label,
-          sortText: `00_${label}`,
+          sortText: type === FileType.File ? `00_${label}` : label.startsWith('.') ? `03_${label}` : `01_${label}`,
           kind: isDir ? CompletionItemKind.Folder : CompletionItemKind.File,
           insertText: isDir || (type === FileType.File && attributeListStartPosition) ? newText : `${newText}[]`,
           range: {
@@ -79,6 +102,10 @@ export class PathCompletionProvider {
             : undefined,
         }
       })
+    return [
+      levelUpCompletionItem,
+      ...completionItems,
+    ]
   }
 }
 
@@ -143,7 +170,7 @@ function resolvePath (root: URI, ref: string): URI | undefined {
   }
 }
 
-const pathCompletionRx = /(?<macro>image|link|xref|video|audio)::?(?<target>[^[\]\s:][^[\]]*|)$/
+const pathCompletionRx = /(?<macro>image|link|xref|video|audio|include)::?(?<target>[^[\]\s:][^[\]]*|)$/
 const attributeListStartRx = /[^[\]\s]*(?<!\\)\[/
 
 export function getPathCompletionContext (lineText: string, position: Position, completionContext: CompletionContext): PathCompletionContext | undefined {
@@ -180,6 +207,9 @@ export function getPathCompletionContext (lineText: string, position: Position, 
 
 function getSupportedExtensions (completionContextKind: CompletionContextKind): string[] {
   switch (completionContextKind) {
+    case CompletionContextKind.Include:
+      // QUESTION: exclude all non text-based file extensions?
+      return undefined
     case CompletionContextKind.Audio:
       return [
         '.au', // audio/basic RFC 2046

@@ -43,6 +43,31 @@ export class AntoraDocumentContext {
   public getImages () {
     return this.antoraContext.contentCatalog.findBy({ family: 'image' })
   }
+
+  public getIncludeCompatibleFiles () {
+    return [
+      ...this.getExamples(),
+      ...this.getPages(),
+      ...this.getPartials(),
+      ...this.getAttachments(),
+    ]
+  }
+
+  public getExamples () {
+    return this.antoraContext.contentCatalog.findBy({ family: 'example' })
+  }
+
+  public getPages () {
+    return this.antoraContext.contentCatalog.findBy({ family: 'page' })
+  }
+
+  public getPartials () {
+    return this.antoraContext.contentCatalog.findBy({ family: 'partial' })
+  }
+
+  public getAttachments () {
+    return this.antoraContext.contentCatalog.findBy({ family: 'attachment' })
+  }
 }
 
 export class AntoraContext {

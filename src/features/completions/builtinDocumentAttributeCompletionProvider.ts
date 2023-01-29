@@ -1,7 +1,7 @@
 import * as vscode from 'vscode'
 import builtinAttributes from './builtinDocumentAttribute.json'
 
-export class BuiltinDocumentAttributeProvider {
+export class BuiltinDocumentAttributeCompletionProvider {
   private readonly completionItems = Object.keys(builtinAttributes).map((key) => {
     const value = builtinAttributes[key]
     const completionItem = new vscode.CompletionItem({ label: value.label, description: value.description }, vscode.CompletionItemKind.Text)
@@ -10,7 +10,7 @@ export class BuiltinDocumentAttributeProvider {
   })
 
   async provideCompletionItems (textDocument: vscode.TextDocument, position: vscode.Position): Promise<vscode.CompletionItem[]> {
-    const linePrefix = textDocument.lineAt(position).text.substr(0, position.character)
+    const linePrefix = textDocument.lineAt(position).text.substring(0, position.character)
     if (linePrefix !== ':') {
       return undefined
     }

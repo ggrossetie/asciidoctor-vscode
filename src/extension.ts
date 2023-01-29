@@ -16,12 +16,13 @@ import { AsciidocEngine } from './asciidocEngine'
 import { getAsciidocExtensionContributions } from './asciidocExtensions'
 import { AsciidoctorExtensionsSecurityPolicyArbiter, AsciidoctorExtensionsTrustModeSelector, ExtensionContentSecurityPolicyArbiter, PreviewSecuritySelector } from './security'
 import { AsciidocFileIncludeAutoCompletionMonitor } from './util/includeAutoCompletion'
-import { AttributeReferenceProvider } from './features/attributeReferenceProvider'
-import { BuiltinDocumentAttributeProvider } from './features/builtinDocumentAttributeProvider'
+import { AttributeReferenceCompletionProvider } from './features/completions/attributeReferenceCompletionProvider'
+import { BuiltinDocumentAttributeCompletionProvider } from './features/completions/builtinDocumentAttributeCompletionProvider'
 import AsciidocFoldingRangeProvider from './features/foldingProvider'
 import { AntoraSupportManager } from './features/antora/antoraSupport'
 import { DropImageIntoEditorProvider } from './features/dropIntoEditor'
-import { ImageCompletionProvider } from './providers/imageCompletionProvider'
+import { ImageCompletionProvider } from './features/completions/imageCompletionProvider'
+import { IncludeCompletionProvider } from './features/completions/includeCompletionProvider'
 
 export async function activate (context: vscode.ExtensionContext) {
   // Set context as a global as some tests depend on it
@@ -59,9 +60,10 @@ export async function activate (context: vscode.ExtensionContext) {
   context.subscriptions.push(vscode.languages.registerDocumentSymbolProvider(selector, symbolProvider))
   context.subscriptions.push(vscode.languages.registerDocumentLinkProvider(selector, new LinkProvider()))
   context.subscriptions.push(vscode.languages.registerWorkspaceSymbolProvider(new AsciidocWorkspaceSymbolProvider(symbolProvider)))
-  context.subscriptions.push(vscode.languages.registerCompletionItemProvider(selector, new AttributeReferenceProvider(), '{'))
-  context.subscriptions.push(vscode.languages.registerCompletionItemProvider(selector, new BuiltinDocumentAttributeProvider(), ':'))
-  context.subscriptions.push(vscode.languages.registerCompletionItemProvider(selector, new ImageCompletionProvider(context.workspaceState), ':'))
+  context.subscriptions.push(vscode.languages.registerCompletionItemProvider(selector, new AttributeReferenceCompletionProvider(), '{'))
+  context.subscriptions.push(vscode.languages.registerCompletionItemProvider(selector, new BuiltinDocumentAttributeCompletionProvider(), ':'))
+  context.subscriptions.push(vscode.languages.registerCompletionItemProvider(selector, new ImageCompletionProvider(context.workspaceState), ':', '/'))
+  context.subscriptions.push(vscode.languages.registerCompletionItemProvider(selector, new IncludeCompletionProvider(context.workspaceState), ':', '/'))
   context.subscriptions.push(vscode.languages.registerFoldingRangeProvider(selector, new AsciidocFoldingRangeProvider()))
   context.subscriptions.push(vscode.languages.registerDocumentDropEditProvider(selector, new DropImageIntoEditorProvider()))
   const previewSecuritySelector = new PreviewSecuritySelector(cspArbiter, previewManager)
