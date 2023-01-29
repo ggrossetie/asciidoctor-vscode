@@ -26,7 +26,8 @@ export class ImageCompletionProvider implements CompletionItemProvider {
     if (imagesDir) {
       pathCompletionContext.baseDir = imagesDir
     }
-    return this.pathCompletionProvider.provideCompletionItems(textDocument.uri, pathCompletionContext)
+    const result = await this.pathCompletionProvider.provideCompletionItems(textDocument.uri, pathCompletionContext)
+    return result
   }
 }
 

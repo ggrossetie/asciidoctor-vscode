@@ -1,4 +1,4 @@
-import { CompletionContext, CompletionItemKind, FileType, Position, Range, Uri, workspace } from 'vscode'
+import { CompletionContext, CompletionItem, CompletionItemKind, FileType, Position, Range, Uri, workspace } from 'vscode'
 import ospath, { dirname, resolve } from 'path'
 import { URI, Utils } from 'vscode-uri'
 
@@ -29,6 +29,8 @@ export interface PathCompletionContext {
 
   readonly context: CompletionContext
 
+  readonly position: Position
+
   readonly kind: CompletionContextKind
 
   readonly target: string
@@ -43,7 +45,7 @@ export interface PathCompletionContext {
 }
 
 export class PathCompletionProvider {
-  async provideCompletionItems (documentUri: Uri, pathCompletionContext: PathCompletionContext) {
+  async provideCompletionItems (documentUri: Uri, pathCompletionContext: PathCompletionContext): Promise<CompletionItem[]> {
     const supportedExtensions = getSupportedExtensions(pathCompletionContext.kind)
     const ref = getReference(pathCompletionContext.target, pathCompletionContext.baseDir)
     const parentDir = resolveReference(documentUri, ref)
@@ -57,12 +59,18 @@ export class PathCompletionProvider {
         const isDir = type === FileType.Directory
         const newText = name + (isDir ? '/' : '')
         const label = isDir ? name + '/' : name
+        const attributeListStartPosition = pathCompletionContext.attributeListStartPosition
         return {
           label,
           sortText: `00_${label}`,
           kind: isDir ? CompletionItemKind.Folder : CompletionItemKind.File,
-          insertText: isDir ? newText : `${newText}[]`,
-          // TODO: use TextEdit to replace or insert new text
+          insertText: isDir || (type === FileType.File && attributeListStartPosition) ? newText : `${newText}[]`,
+          range: {
+            inserting: new Range(pathCompletionContext.position, pathCompletionContext.position),
+            replacing: type === FileType.File && attributeListStartPosition
+              ? new Range(pathCompletionContext.position, attributeListStartPosition.with({ character: attributeListStartPosition.character - 1 }))
+              : new Range(pathCompletionContext.position, pathCompletionContext.position),
+          },
           command: isDir
             ? {
               command: 'editor.action.triggerSuggest',
@@ -160,6 +168,7 @@ export function getPathCompletionContext (lineText: string, position: Position, 
     }
     return {
       context: completionContext,
+      position,
       kind,
       target: macroFound.groups.target || '',
       macroNameRange,

@@ -13,6 +13,10 @@ test('relative image path', () => {
       triggerKind: 0,
       triggerCharacter: undefined,
     },
+    position: {
+      character: 10,
+      line: 1,
+    },
     kind: 'image',
     target: '../',
     macroNameRange: {
@@ -37,6 +41,10 @@ test('inline image', () => {
     context: {
       triggerKind: 0,
       triggerCharacter: undefined,
+    },
+    position: {
+      character: 33,
+      line: 1,
     },
     kind: 'image',
     target: 'su',
@@ -72,6 +80,7 @@ test('provide completion items', async () => {
   ]))
   const items = await new PathCompletionProvider().provideCompletionItems(URI.file('test.adoc'), {
     kind: CompletionContextKind.Image,
+    position: new Position(1, 1),
     context: {
       triggerKind: CompletionTriggerKind.Invoke,
     } as CompletionContext,

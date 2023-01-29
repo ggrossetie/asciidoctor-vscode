@@ -129,6 +129,15 @@ class Position {
     this.line = line
     this.character = character
   }
+
+  with (args) {
+    if ('line' in args) {
+      this.line = args.line
+    }
+    if ('character' in args) {
+      this.character = args.character
+    }
+  }
 }
 
 const Diagnostic = jest.fn()
