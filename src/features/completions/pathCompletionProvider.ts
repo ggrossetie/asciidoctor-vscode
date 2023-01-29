@@ -1,7 +1,6 @@
 import { CompletionContext, CompletionItem, CompletionItemKind, FileType, Position, Range, Uri, workspace } from 'vscode'
 import ospath, { dirname, resolve } from 'path'
 import { URI, Utils } from 'vscode-uri'
-import vscode from 'vscode'
 
 export enum CompletionContextKind {
   /** `link:target[]` */
@@ -54,21 +53,21 @@ export class PathCompletionProvider {
       return []
     }
     const files = await workspace.fs.readDirectory(parentDir)
-    const levelUpCompletionItem: vscode.CompletionItem = {
+    const levelUpCompletionItem: CompletionItem = {
       label: '../',
-      kind: vscode.CompletionItemKind.Folder,
+      kind: CompletionItemKind.Folder,
       sortText: '02_..',
       command: {
         command: 'editor.action.triggerSuggest',
         title: '',
       },
     }
-    // sort order
-    // files
-    // hidden files
-    // directories
-    // ../
-    // hidden directories
+    // TODO: sort order
+    // 1. files
+    // 2. hidden files
+    // 3. directories
+    // 4. ../
+    // 5. hidden directories
     const completionItems = files
       .filter(([name, type]) => type !== FileType.File || !supportedExtensions || (type === FileType.File && supportedExtensions.includes(ospath.extname(name).toLowerCase())))
       .map(([name, type]) => {
@@ -76,13 +75,6 @@ export class PathCompletionProvider {
         const newText = name + (isDir ? '/' : '')
         const label = isDir ? name + '/' : name
         const attributeListStartPosition = pathCompletionContext.attributeListStartPosition
-        let order = label.startsWith('.')
-          ? type === FileType.File
-            ? 2
-            : 3
-          ? 0
-          : 1
-        if (label.startsWith('.'))
         return {
           label,
           sortText: type === FileType.File ? `00_${label}` : label.startsWith('.') ? `03_${label}` : `01_${label}`,
