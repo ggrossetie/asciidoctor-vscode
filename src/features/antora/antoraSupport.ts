@@ -3,11 +3,11 @@ import fs from 'fs'
 import yaml from 'js-yaml'
 import File from 'vinyl'
 import * as path from 'path'
-import AntoraCompletionProvider from './antoraCompletionProvider'
 import { disposeAll } from '../../util/dispose'
 import * as nls from 'vscode-nls'
 import classifyContent from '@antora/content-classifier'
 import ContentCatalog from '@antora/content-classifier/lib/content-catalog'
+import AntoraAsciiDocAttributesCompletionProvider from '../completions/antoraCompletionProvider'
 
 const localize = nls.loadMessageBundle()
 
@@ -185,7 +185,7 @@ export class AntoraSupportManager implements vscode.Disposable {
       language: 'asciidoc',
       scheme: 'file',
     },
-    new AntoraCompletionProvider(),
+    new AntoraAsciiDocAttributesCompletionProvider(),
     '{'
     )
     this._disposables.push(attributesCompletionProvider)

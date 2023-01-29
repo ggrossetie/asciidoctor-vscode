@@ -2,6 +2,9 @@ import { CompletionContext, CompletionItem, CompletionItemKind, FileType, Positi
 import ospath, { dirname, resolve } from 'path'
 import { URI, Utils } from 'vscode-uri'
 
+const pathCompletionRx = /(?<macro>image|link|xref|video|audio|include)::?(?<target>[^[\]\s:][^[\]]*|)$/
+const attributeListStartRx = /[^[\]\s]*(?<!\\)\[/
+
 export enum CompletionContextKind {
   /** `link:target[]` */
   Link = 'link',
@@ -180,9 +183,6 @@ function resolvePath (root: URI, ref: string): URI | undefined {
     return undefined
   }
 }
-
-const pathCompletionRx = /(?<macro>image|link|xref|video|audio|include)::?(?<target>[^[\]\s:][^[\]]*|)$/
-const attributeListStartRx = /[^[\]\s]*(?<!\\)\[/
 
 export function getPathCompletionContext (lineText: string, position: Position, completionContext: CompletionContext): PathCompletionContext | undefined {
   const before = lineText.substring(0, position.character)

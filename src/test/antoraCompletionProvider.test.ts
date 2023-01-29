@@ -1,18 +1,17 @@
+import { Position, Uri, workspace } from 'vscode'
 import 'mocha'
-import * as vscode from 'vscode'
 import assert from 'assert'
-import AntoraCompletionProvider from '../features/antora/antoraCompletionProvider'
-import { Position } from 'vscode'
+import AntoraAsciiDocAttributesCompletionProvider from '../features/completions/antoraCompletionProvider'
 
 let root
 
 suite('Antora CompletionsProvider', () => {
   setup(() => {
-    root = vscode.workspace.workspaceFolders[0].uri.fsPath
+    root = workspace.workspaceFolders[0].uri.fsPath
   })
   test('Should return completion items', async () => {
-    const provider = new AntoraCompletionProvider()
-    const file = await vscode.workspace.openTextDocument(vscode.Uri.file(`${root}/antora/multiComponents/api/modules/auth/pages/jwt/page2.adoc`))
+    const provider = new AntoraAsciiDocAttributesCompletionProvider()
+    const file = await workspace.openTextDocument(Uri.file(`${root}/antora/multiComponents/api/modules/auth/pages/jwt/page2.adoc`))
     const completionsItems = await provider.provideCompletionItems(file, new Position(3, 1))
     assert.deepStrictEqual(completionsItems[0].label, {
       description: 'asciidoc@',

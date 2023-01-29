@@ -2,6 +2,7 @@ import { CancellationToken, CompletionContext, CompletionItem, CompletionItemKin
 import { AntoraSupportManager, getAntoraDocumentContext } from '../antora/antoraSupport'
 import { CompletionContextKind, getPathCompletionContext, PathCompletionContext, PathCompletionProvider } from './pathCompletionProvider'
 import { AsciiDocTextDocument } from '../AsciiDocTextDocument'
+import { AntoraCompletionProvider } from './antoraCompletionProvider'
 
 export class ImageCompletionProvider implements CompletionItemProvider {
   private pathCompletionProvider: PathCompletionProvider
@@ -34,21 +35,7 @@ export class ImageCompletionProvider implements CompletionItemProvider {
 async function provideAntoraCompletionItems (textDocumentUri: Uri, pathCompletionContext: PathCompletionContext): Promise<CompletionItem[]> {
   const antoraDocumentContext = await getAntoraDocumentContext(textDocumentUri)
   if (antoraDocumentContext) {
-    return provideAntoraImageCompletionItems(antoraDocumentContext, pathCompletionContext)
+    return AntoraCompletionProvider.provideAntoraResourceIdCompletionItems(antoraDocumentContext.getImages(), pathCompletionContext)
   }
   return []
-}
-
-function provideAntoraImageCompletionItems (antoraDocumentContext, pathCompletionContext: PathCompletionContext): CompletionItem[] {
-  return antoraDocumentContext.getImages().map((image) => {
-    const value = image.basename
-    const completionItem = new CompletionItem({
-      label: value,
-      description: `${image.src.version}@${image.src.component}:${image.src.module}:${image.src.relative}`,
-    }, CompletionItemKind.Text)
-    let insertText = value
-    insertText = pathCompletionContext.attributeListStartPosition ? insertText : `${insertText}[]`
-    completionItem.insertText = insertText
-    return completionItem
-  })
 }
