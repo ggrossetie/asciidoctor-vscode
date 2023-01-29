@@ -56,18 +56,12 @@ export class PathCompletionProvider {
     const levelUpCompletionItem: CompletionItem = {
       label: '../',
       kind: CompletionItemKind.Folder,
-      sortText: '02_..',
+      sortText: '03_..',
       command: {
         command: 'editor.action.triggerSuggest',
         title: '',
       },
     }
-    // TODO: sort order
-    // 1. files
-    // 2. hidden files
-    // 3. directories
-    // 4. ../
-    // 5. hidden directories
     const completionItems = files
       .filter(([name, type]) => type !== FileType.File || !supportedExtensions || (type === FileType.File && supportedExtensions.includes(ospath.extname(name).toLowerCase())))
       .map(([name, type]) => {
@@ -75,9 +69,10 @@ export class PathCompletionProvider {
         const newText = name + (isDir ? '/' : '')
         const label = isDir ? name + '/' : name
         const attributeListStartPosition = pathCompletionContext.attributeListStartPosition
+        const sortOrder = getSortOrder(type, label)
         return {
           label,
-          sortText: type === FileType.File ? `00_${label}` : label.startsWith('.') ? `03_${label}` : `01_${label}`,
+          sortText: `0${sortOrder}_${label}`,
           kind: isDir ? CompletionItemKind.Folder : CompletionItemKind.File,
           insertText: isDir || (type === FileType.File && attributeListStartPosition) ? newText : `${newText}[]`,
           range: {
@@ -99,6 +94,30 @@ export class PathCompletionProvider {
       ...completionItems,
     ]
   }
+}
+
+/**
+ * Get sort order:
+ * 1. files
+ * 2. directories
+ * 3. ../
+ * 4. hidden files
+ * 5. hidden directories
+ *
+ * @param type file type
+ * @param label file name
+ */
+function getSortOrder (type: FileType, label: string) {
+  if (type === FileType.Directory) {
+    if (label.startsWith('.')) {
+      return 5 // hidden directories
+    }
+    return 2 // directories
+  }
+  if (label.startsWith('.')) {
+    return 4 // hidden files
+  }
+  return 1 // files
 }
 
 export function resolveReference (documentUri: URI, ref: string): URI | undefined {
