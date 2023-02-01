@@ -1,0 +1,122 @@
+{
+  "blank": {
+    "value": "",
+    "description": ""
+  },
+  "empty": {
+    "value": "",
+    "description": ""
+  },
+  "sp": {
+    "value": "",
+    "description": ""
+  },
+  "nbsp": {
+    "value": "",
+    "description": ""
+  },
+  "zwsp": {
+    "value": "",
+    "description": ""
+  },
+  "wj": {
+    "value": "",
+    "description": ""
+  },
+  "apos": {
+    "value": "",
+    "description": ""
+  },
+  "quot": {
+    "value": "",
+    "description": ""
+  },
+  "lsquo": {
+    "value": "",
+    "description": ""
+  },
+  "rsquo": {
+    "value": "",
+    "description": ""
+  },
+  "ldquo": {
+    "value": "",
+    "description": ""
+  },
+  "rdquo": {
+    "value": "",
+    "description": ""
+  },
+  "deg": {
+    "value": "",
+    "description": ""
+  },
+  "plus": {
+    "value": "",
+    "description": ""
+  },
+  "brvbar": {
+    "value": "",
+    "description": ""
+  },
+  "vbar": {
+    "value": "",
+    "description": ""
+  },
+  "amp": {
+    "value": "",
+    "description": ""
+  },
+  "lt": {
+    "value": "",
+    "description": ""
+  },
+  "gt": {
+    "value": "",
+    "description": ""
+  },
+  "startsb": {
+    "value": "",
+    "description": ""
+  },
+  "endsb": {
+    "value": "",
+    "description": ""
+  },
+  "caret": {
+    "value": "",
+    "description": ""
+  },
+  "asterisk": {
+    "value": "",
+    "description": ""
+  },
+  "tilde": {
+    "value": "",
+    "description": ""
+  },
+  "backslash": {
+    "value": "",
+    "description": ""
+  },
+  "backtick": {
+    "value": "",
+    "description": ""
+  },
+  "two-colons": {
+    "value": "",
+    "description": ""
+  },
+  "two-semicolons": {
+    "value": "",
+    "description": ""
+  },
+  "cpp": {
+    "value": "",
+    "description": ""
+  },
+  "pp": {
+    "value": "",
+    "description": ""
+  }
+}
