@@ -1,4 +1,4 @@
-import { CompletionContext, CompletionItem, CompletionItemKind, FileType, Position, Range, Uri, workspace } from 'vscode'
+import { CompletionContext, CompletionItem, CompletionItemKind, FileSystemError, FileType, Position, Range, Uri, workspace } from 'vscode'
 import ospath, { dirname, resolve } from 'path'
 import { URI, Utils } from 'vscode-uri'
 
@@ -36,7 +36,7 @@ export interface PathCompletionContext {
 
   readonly kind: CompletionContextKind
 
-  readonly target: string
+  target: string
 
   readonly macroNameRange: Range
 
@@ -55,47 +55,54 @@ export class PathCompletionProvider {
     if (!parentDir) {
       return []
     }
-    const files = await workspace.fs.readDirectory(parentDir)
-    const levelUpCompletionItem: CompletionItem = {
-      label: '../',
-      kind: CompletionItemKind.Folder,
-      sortText: '03_..',
-      command: {
-        command: 'editor.action.triggerSuggest',
-        title: '',
-      },
+    try {
+      const files = await workspace.fs.readDirectory(parentDir)
+      const levelUpCompletionItem: CompletionItem = {
+        label: '../',
+        kind: CompletionItemKind.Folder,
+        sortText: '03_..',
+        command: {
+          command: 'editor.action.triggerSuggest',
+          title: '',
+        },
+      }
+      const completionItems = files
+        .filter(([name, type]) => type !== FileType.File || !supportedExtensions || (type === FileType.File && supportedExtensions.includes(ospath.extname(name).toLowerCase())))
+        .map(([name, type]) => {
+          const isDir = type === FileType.Directory
+          const newText = name + (isDir ? '/' : '')
+          const label = isDir ? name + '/' : name
+          const attributeListStartPosition = pathCompletionContext.attributeListStartPosition
+          const sortOrder = getSortOrder(type, label)
+          return {
+            label,
+            sortText: `0${sortOrder}_${label}`,
+            kind: isDir ? CompletionItemKind.Folder : CompletionItemKind.File,
+            insertText: isDir || (type === FileType.File && attributeListStartPosition) ? newText : `${newText}[]`,
+            range: {
+              inserting: new Range(pathCompletionContext.position, pathCompletionContext.position),
+              replacing: type === FileType.File && attributeListStartPosition
+                ? new Range(pathCompletionContext.position, attributeListStartPosition.with({ character: attributeListStartPosition.character - 1 }))
+                : new Range(pathCompletionContext.position, pathCompletionContext.position),
+            },
+            command: isDir
+              ? {
+                command: 'editor.action.triggerSuggest',
+                title: '',
+              }
+              : undefined,
+          }
+        })
+      return [
+        levelUpCompletionItem,
+        ...completionItems,
+      ]
+    } catch (err) {
+      if (err && err instanceof FileSystemError) {
+        return []
+      }
+      throw err
     }
-    const completionItems = files
-      .filter(([name, type]) => type !== FileType.File || !supportedExtensions || (type === FileType.File && supportedExtensions.includes(ospath.extname(name).toLowerCase())))
-      .map(([name, type]) => {
-        const isDir = type === FileType.Directory
-        const newText = name + (isDir ? '/' : '')
-        const label = isDir ? name + '/' : name
-        const attributeListStartPosition = pathCompletionContext.attributeListStartPosition
-        const sortOrder = getSortOrder(type, label)
-        return {
-          label,
-          sortText: `0${sortOrder}_${label}`,
-          kind: isDir ? CompletionItemKind.Folder : CompletionItemKind.File,
-          insertText: isDir || (type === FileType.File && attributeListStartPosition) ? newText : `${newText}[]`,
-          range: {
-            inserting: new Range(pathCompletionContext.position, pathCompletionContext.position),
-            replacing: type === FileType.File && attributeListStartPosition
-              ? new Range(pathCompletionContext.position, attributeListStartPosition.with({ character: attributeListStartPosition.character - 1 }))
-              : new Range(pathCompletionContext.position, pathCompletionContext.position),
-          },
-          command: isDir
-            ? {
-              command: 'editor.action.triggerSuggest',
-              title: '',
-            }
-            : undefined,
-        }
-      })
-    return [
-      levelUpCompletionItem,
-      ...completionItems,
-    ]
   }
 }
 

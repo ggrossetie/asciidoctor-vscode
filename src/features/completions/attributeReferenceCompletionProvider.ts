@@ -1,5 +1,6 @@
 import { CancellationToken, CompletionContext, CompletionItem, CompletionItemKind, CompletionItemProvider, Position, TextDocument } from 'vscode'
 import { AsciidocParser } from '../../asciidocParser'
+import { getPathCompletionContext } from './pathCompletionProvider'
 
 // Word = [Letter, Mark, Number, Connector_Punctuation]
 const attributeRefRx = /.*(?<!\\)(?<start>\{)(?<name>[\p{L}\p{M}\p{N}\p{Pc}][\p{L}\p{M}\p{N}\p{Pc}-]*|)(?<end>$|\s|\})/ud
@@ -21,12 +22,14 @@ export interface AttributeReferenceCompletionContext {
 
 export class AttributeReferenceCompletionProvider implements CompletionItemProvider {
   provideCompletionItems (textDocument: TextDocument, position: Position, token: CancellationToken, context: CompletionContext): CompletionItem[] {
-    const attrRefCompletionContext = getAttributeReferenceCompletionContext(textDocument.lineAt(position.line).text, position, context)
+    const lineText = textDocument.lineAt(position.line).text
+    const attrRefCompletionContext = getAttributeReferenceCompletionContext(lineText, position, context)
     if (!attrRefCompletionContext) {
       return undefined
     }
     const { document } = AsciidocParser.load(textDocument)
     const attributes = document.getAttributes()
+    const pathCompletionContext = getPathCompletionContext(lineText, position, context)
     return Object.entries(attributes).map(([key, value]) => {
       const completionItem = new CompletionItem(
         {
@@ -35,10 +38,39 @@ export class AttributeReferenceCompletionProvider implements CompletionItemProvi
         },
         CompletionItemKind.Variable
       )
+      let sortOrder
+      if (pathCompletionContext) {
+        if (value.toString().trim() !== '') {
+          // imagesdir should not be suggested (bad practice) when the macro is image:
+          // stylesdir should not be suggested?
+          // what about docdir?
+          // remove:
+          // attribute-missing
+          // asciidoctor-version
+          // attribute-undefined
+          // authorcount
+          // -caption
+          // -label
+          // max-include-depth
+          // -refsig
+          // docdate
+          // docdatetime
+          // docyear
+          // localdate, ...
+          // toc-placement
+          sortOrder = key.endsWith('dir')
+            ? 0
+            : 1
+        } else {
+          sortOrder = 2
+        }
+      } else {
+        sortOrder = 0
+      }
       let insertText = key
       insertText = attrRefCompletionContext.endCharacter !== '}' ? `${insertText}}` : insertText
       completionItem.insertText = insertText
-      completionItem.sortText = `20_${key}`
+      completionItem.sortText = `2${sortOrder}_${key}`
       return completionItem
     })
   }
