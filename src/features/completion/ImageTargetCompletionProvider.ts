@@ -47,7 +47,8 @@ export class ImageTargetCompletionProvider {
         if (imageDirectory) {
           documentParentPath = posix.join(documentParentPath, imageDirectory)
         }
-        const glob = posix.normalize(posix.join(documentParentPath, parentDirectoryPath, '**'))
+        const currentDirectoryPath = posix.normalize(posix.join(documentParentPath, parentDirectoryPath))
+        const glob = posix.join(currentDirectoryPath, '**')
         const levelUpCompletionItem: vscode.CompletionItem = {
           label: '..',
           kind: vscode.CompletionItemKind.Folder,
@@ -55,13 +56,14 @@ export class ImageTargetCompletionProvider {
         }
         console.log({ glob })
         const files = await vscode.workspace.findFiles(glob)
-        const targets = (await Promise.all(files.map(async (f) => {
+        const targets = files.map((f) => {
           try {
-            return new TargetInfo(f, await workspace.fs.stat(f))
+            return new TargetInfo(f, workspaceFolder, currentDirectoryPath)
           } catch (err) {
             console.error(`Unable to stat: ${f}, ignoring.`, err)
+            return undefined
           }
-        }))).filter((t) => t) // ignore undefined
+        }).filter((t) => t) // ignore undefined
         console.log({ targets })
         console.log({ files })
         return [
@@ -76,25 +78,14 @@ export class ImageTargetCompletionProvider {
 }
 
 function createPathCompletionItem (targetInfo: TargetInfo): vscode.CompletionItem | undefined {
-  if (!targetInfo.isDirectory && imageFileExtensions.has(targetInfo.fileExtension)) {
+  if (imageFileExtensions.has(targetInfo.fileExtension)) {
+    const order = `0${targetInfo.pathSegments.length}`
     return {
-      label: targetInfo.lastSegment,
+      label: targetInfo.relativePath,
       kind: vscode.CompletionItemKind.File,
-      sortText: `00_${targetInfo.lastSegment}`,
-      insertText: targetInfo.lastSegment + '[]',
-    }
-  }
-  if (targetInfo.isDirectory) {
-    return {
-      label: targetInfo.lastSegment,
-      kind: vscode.CompletionItemKind.Folder,
-      sortText: `05_${targetInfo.lastSegment}`,
-      insertText: targetInfo.lastSegment,
-      command: {
-        command: 'default:type',
-        title: 'triggerSuggest',
-        arguments: [{ text: '/' }],
-      },
+      sortText: `${order}_${targetInfo.lastSegment}_${targetInfo.relativePath}`,
+      insertText: targetInfo.relativePath + '[]',
+      filterText: targetInfo.lastSegment + ' ' + targetInfo.relativePath,
     }
   }
   // should we ignore other files?
@@ -118,14 +109,17 @@ function replaceAttributeReference (match, backslashes, attr, attributes) {
 }
 
 class TargetInfo {
+  path: string
+  relativePath: string
   lastSegment: string
-  isDirectory: boolean
+  pathSegments: string[]
   fileExtension: string
 
-  constructor (uri: vscode.Uri, stat: vscode.FileStat) {
-    const segments = uri.path.split('/')
-    this.isDirectory = stat.type === FileType.Directory
-    this.lastSegment = segments[segments.length - 1]
+  constructor (uri: vscode.Uri, workspaceFolder: vscode.WorkspaceFolder, currentDirectoryPath: string) {
+    this.path = uri.path
+    this.relativePath = uri.path.replace(workspaceFolder.uri.path + '/' + currentDirectoryPath, '')
+    this.pathSegments = uri.path.split('/')
+    this.lastSegment = this.pathSegments[this.pathSegments.length - 1]
     this.fileExtension = this.lastSegment.slice(this.lastSegment.lastIndexOf('.'), this.lastSegment.length).toLowerCase()
   }
 }
