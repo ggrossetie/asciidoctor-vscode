@@ -53,7 +53,6 @@ export class ImageTargetCompletionProvider {
           kind: vscode.CompletionItemKind.Folder,
           sortText: '10_..',
         }
-        console.log({ glob })
         const files = await vscode.workspace.findFiles(glob)
         const targets = files.map((f) => {
           try {
@@ -63,8 +62,6 @@ export class ImageTargetCompletionProvider {
             return undefined
           }
         }).filter((t) => t) // ignore undefined
-        console.log({ targets })
-        console.log({ files })
         return [
           levelUpCompletionItem,
           ...targets.map((t) => createPathCompletionItem(t)).filter((c) => c),
@@ -78,7 +75,7 @@ export class ImageTargetCompletionProvider {
 
 function createPathCompletionItem (targetInfo: TargetInfo): vscode.CompletionItem | undefined {
   if (imageFileExtensions.has(targetInfo.fileExtension)) {
-    const order = `0${targetInfo.pathSegments.length}`
+    const order = `1${targetInfo.pathSegments.length}`
     return {
       label: targetInfo.relativePath,
       kind: vscode.CompletionItemKind.File,

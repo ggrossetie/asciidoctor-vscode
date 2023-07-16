@@ -35,6 +35,11 @@ export class AttributeReferenceProvider {
       return []
     }
     const prefix = lineText.substring(position.character - 1, position.character)
+    if (prefix !== '{') {
+      return []
+    }
+    const editorConfig = vscode.workspace.getConfiguration('editor')
+    const doAutoCloseBrackets = editorConfig.get('autoClosingBrackets') === 'always'
     const suffix = lineText.substring(position.character, position.character + 1)
     return Object.keys(attributes).map((key) => {
       const completionItem = new vscode.CompletionItem({
@@ -42,11 +47,8 @@ export class AttributeReferenceProvider {
         description: attributes[key]?.toString(),
       },
       vscode.CompletionItemKind.Variable)
-      let insertText = key
-      insertText = prefix !== '{' ? `{${insertText}` : insertText
-      insertText = suffix !== '}' ? `${insertText}}` : insertText
-      completionItem.insertText = insertText
-      completionItem.sortText = `20_${key}`
+      completionItem.insertText = suffix !== '}' && !doAutoCloseBrackets ? `${key}}` : key
+      completionItem.sortText = `00_${key}`
       completionItem.filterText = key + ' ' + attributes[key]?.toString()
       return completionItem
     })
