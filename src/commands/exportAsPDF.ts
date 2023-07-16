@@ -25,9 +25,14 @@ export class ExportAsPDF implements Command {
     }
 
     const doc = editor.document
+    const docPath = doc.uri.path
+    const fileName = docPath.slice(docPath.lastIndexOf('/') + 1, docPath.length)
     const workspaceFolder = vscode.workspace.getWorkspaceFolder(doc.uri)
     if (workspaceFolder === undefined) {
-      await vscode.window.showWarningMessage('Unable to get the workspace folder, aborting.')
+      await vscode.window.showWarningMessage(`No workspace folder associated with ${fileName}, aborting.\n Make sure to add the folder containing your AsciiDoc file to your workspace and try again.`, {
+        detail: 'Make sure to add the folder containing your AsciiDoc file to your workspace and try again.',
+        /*modal: true,*/
+      })
       return
     }
     const workspacePath = workspaceFolder.uri.fsPath
