@@ -5,6 +5,7 @@
 import * as vscode from 'vscode'
 import * as ospath from 'path'
 import * as fs from 'fs'
+import { imageFileExtensions } from '../features/dropIntoEditor'
 
 export function isAsciidocFile (document: vscode.TextDocument) {
   return document.languageId === 'asciidoc'
@@ -13,34 +14,28 @@ export function isAsciidocFile (document: vscode.TextDocument) {
 export class FileInfo {
   file: string
   isFile: boolean
+  isImage: boolean
+  private readonly fileExtension: string
 
   constructor (path: string, file: string) {
     this.file = file
     this.isFile = fs.statSync(ospath.join(path, file)).isFile()
+    this.fileExtension = file.slice(file.lastIndexOf('.'), file.length).toLowerCase()
+    this.isImage = imageFileExtensions.has(this.fileExtension)
   }
 }
 
 /**
- * @param fileName  {string} current filename the look up is done. Absolute path
- * @param text      {string} text in import string. e.g. './src/'
+ * @param parentDirectory  {string} parent directory (must be an absolute path)
+ * @param target {string} text in the target string. e.g. './src/'
  */
-export function getPathOfFolderToLookupFiles (
-  fileName: string,
-  text: string | undefined,
-  rootPath?: string
-): string {
-  const normalizedText = ospath.normalize(text || '')
-
-  const isPathAbsolute = normalizedText.startsWith(ospath.sep)
-
-  let rootFolder = ospath.dirname(fileName)
-  const pathEntered = normalizedText
-
+export function getPathOfFolderToLookupFiles (parentDirectory: string, target: string): string {
+  const normalizedTarget = ospath.normalize(target || '')
+  const isPathAbsolute = normalizedTarget.startsWith(ospath.sep)
   if (isPathAbsolute) {
-    rootFolder = rootPath || ''
+    parentDirectory = ''
   }
-
-  return ospath.join(rootFolder, pathEntered)
+  return ospath.join(parentDirectory, normalizedTarget)
 }
 
 export async function getChildrenOfPath (path: string) {
@@ -54,9 +49,7 @@ export async function getChildrenOfPath (path: string) {
         }
       })
     })
-    const filesDbg = files
-      .map((f) => new FileInfo(path, f))
-    return filesDbg
+    return files.map((f) => new FileInfo(path, f))
   } catch (error) {
     return []
   }

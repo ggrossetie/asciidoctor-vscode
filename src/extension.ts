@@ -23,6 +23,7 @@ import { AsciidoctorDiagnostic } from './features/asciidoctorDiagnostic'
 import { AsciidocEngine } from './asciidocEngine'
 import { AsciidocIncludeItemsLoader, AsciidocLoader } from './asciidocLoader'
 import { AsciidoctorIncludeItems } from './features/asciidoctorIncludeItems'
+import { ImageTargetCompletionProvider } from './features/completion/ImageTargetCompletionProvider'
 
 export async function activate (context: vscode.ExtensionContext) {
   // Set context as a global as some tests depend on it
@@ -71,7 +72,8 @@ export async function activate (context: vscode.ExtensionContext) {
   const symbolProvider = new AdocDocumentSymbolProvider(null, asciidocLoader)
   const previewManager = new AsciidocPreviewManager(contentProvider, logger, contributionProvider)
   context.subscriptions.push(previewManager)
-  context.subscriptions.push(new AsciidocTargetPathAutoCompletionMonitor(asciidocLoader))
+  context.subscriptions.push(new AsciidocTargetPathAutoCompletionMonitor())
+  context.subscriptions.push(vscode.languages.registerCompletionItemProvider(selector, new ImageTargetCompletionProvider(asciidocLoader), ...[':', '/']))
   context.subscriptions.push(await AntoraSupportManager.getInstance(context.workspaceState))
   context.subscriptions.push(vscode.languages.registerDocumentSymbolProvider(selector, symbolProvider))
   context.subscriptions.push(vscode.languages.registerDocumentLinkProvider(selector, new LinkProvider(asciidocIncludeItemsLoader)))

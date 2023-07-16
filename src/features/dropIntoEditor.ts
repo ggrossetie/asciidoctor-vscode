@@ -7,7 +7,7 @@ import * as path from 'path'
 import * as vscode from 'vscode'
 import * as URI from 'vscode-uri'
 
-const imageFileExtensions = new Set<string>([
+export const imageFileExtensions = new Set<string>([
   '.bmp',
   '.gif',
   '.ico',
@@ -20,6 +20,7 @@ const imageFileExtensions = new Set<string>([
   '.tif',
   '.tiff',
   '.webp',
+  '.wmf',
 ])
 
 export class DropImageIntoEditorProvider implements vscode.DocumentDropEditProvider {

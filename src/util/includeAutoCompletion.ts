@@ -1,13 +1,12 @@
 import * as vscode from 'vscode'
-import { TargetPathCompletionProvider } from '../providers/asciidoc.provider'
 import { BibtexProvider } from '../providers/bibtex.provider'
 import { xrefProvider } from '../providers/xref.provider'
 import { disposeAll } from './dispose'
-import { AsciidocLoader } from '../asciidocLoader'
 
 export class AsciidocTargetPathAutoCompletionMonitor {
   private readonly disposables: vscode.Disposable[] = []
-  constructor (asciidocLoader: AsciidocLoader) {
+  constructor () {
+    /*
     const disposable = vscode.languages.registerCompletionItemProvider(
       {
         language: 'asciidoc',
@@ -15,7 +14,7 @@ export class AsciidocTargetPathAutoCompletionMonitor {
       },
       new TargetPathCompletionProvider(asciidocLoader),
       ...[':', '/']
-    )
+    )*/
 
     const bibtexDisposable = vscode.languages.registerCompletionItemProvider(
       {
@@ -35,7 +34,7 @@ export class AsciidocTargetPathAutoCompletionMonitor {
       ...[':', '/']
     )
 
-    this.disposables.push(disposable)
+    //this.disposables.push(disposable)
     this.disposables.push(bibtexDisposable)
     this.disposables.push(xrefDisposable)
   }

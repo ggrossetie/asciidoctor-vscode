@@ -17,7 +17,7 @@ export class TargetPathCompletionProvider {
 
   async provideCompletionItems (textDocument: vscode.TextDocument, position: vscode.Position): Promise<vscode.CompletionItem[]> {
     const context = createContext(textDocument, position)
-    if (macroWithTargetPathRx.test(context.textFullLine)) {
+    if (context.textFullLine.match(macroWithTargetPathRx)) {
       const documentText = context.document.getText()
       const pathExtractedFromMacroString = context.textFullLine.replace('include::', '').replace('image::', '').replace('image:', '')
       let entryDir = pathExtractedFromMacroString.slice(0, pathExtractedFromMacroString.lastIndexOf('/'))
@@ -33,7 +33,8 @@ export class TargetPathCompletionProvider {
 
       const documentPath = context.document.uri.fsPath
       let documentParentPath = documentPath.slice(0, documentPath.lastIndexOf('/'))
-      if (context.textFullLine.includes('image:')) {
+      const imageMacro = context.textFullLine.includes('image:')
+      if (imageMacro) {
         const imagesDirValue = (await this.asciidocLoader.load(textDocument)).getAttribute('imagesdir', '')
         if (imagesDirValue) {
           documentParentPath = path.join(documentParentPath, imagesDirValue)
@@ -79,7 +80,7 @@ export class TargetPathCompletionProvider {
         levelUpCompletionItem,
         ...variablePathSubstitutions,
         ...items.map((child) => {
-          const result = createPathCompletionItem(child)
+          const result = createPathCompletionItem(child, imageMacro ? 'imageMacro' : 'includeMacro')
           result.insertText = result.kind === vscode.CompletionItemKind.File ? child.file + '[]' : child.file
           if (result.kind === vscode.CompletionItemKind.Folder) {
             result.command = {
@@ -97,8 +98,16 @@ export class TargetPathCompletionProvider {
 }
 
 function createPathCompletionItem (
-  fileInfo: FileInfo
+  fileInfo: FileInfo,
+  context: 'imageMacro' | 'includeMacro'
 ): vscode.CompletionItem {
+  if (context === 'imageMacro' && fileInfo.isImage) {
+    return {
+      label: fileInfo.file,
+      kind: fileInfo.isFile ? vscode.CompletionItemKind.File : vscode.CompletionItemKind.Folder,
+      sortText: `00_${fileInfo.file}`,
+    }
+  }
   return {
     label: fileInfo.file,
     kind: fileInfo.isFile ? vscode.CompletionItemKind.File : vscode.CompletionItemKind.Folder,
