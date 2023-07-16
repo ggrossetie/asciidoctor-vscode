@@ -1,5 +1,4 @@
 import * as vscode from 'vscode'
-import { FileType, workspace } from 'vscode'
 import { posix } from 'path'
 import { AsciidocLoader } from '../../asciidocLoader'
 import { imageFileExtensions } from '../dropIntoEditor'
