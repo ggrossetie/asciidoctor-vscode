@@ -107,6 +107,7 @@ export class AsciidoctorWebViewConverter {
   config: AsciidocPreviewConfiguration
   initialData: { [key: string]: any }
   state: object
+  resolvingXref: boolean
 
   constructor (
     private readonly textDocument: SkinnyTextDocument,
@@ -138,6 +139,7 @@ export class AsciidoctorWebViewConverter {
       disableSecurityWarnings: shouldDisableSecurityWarnings,
     }
     this.state = state || {}
+    this.resolvingXref = undefined
   }
 
   // alias to $convert method to use AsciidoctorWebViewConverter as option in processor.convert method in Asciidoctor.js
@@ -202,12 +204,44 @@ export class AsciidoctorWebViewConverter {
       </body>
       </html>`
     }
-    if (nodeName === 'inline_anchor' && node.type === 'link') {
-      const href = isSchemeBlacklisted(node.target) ? '#' : node.target
-      const id = node.hasAttribute('id') ? ` id="${node.id}"` : ''
-      const role = node.hasAttribute('role') ? ` class="${node.getRole()}"` : ''
-      const title = node.hasAttribute('title') ? ` title="${node.title}"` : ''
-      return `<a href="${href}"${id}${role}${title} data-href="${href}">${node.text}</a>`
+    if (nodeName === 'inline_anchor') {
+      if (node.type === 'link') {
+        const href = isSchemeBlacklisted(node.target) ? '#' : node.target
+        const id = node.hasAttribute('id') ? ` id="${node.id}"` : ''
+        const role = node.hasAttribute('role') ? ` class="${node.getRole()}"` : ''
+        const title = node.hasAttribute('title') ? ` title="${node.title}"` : ''
+        return `<a href="${href}"${id}${role}${title} data-href="${href}">${node.text}</a>`
+      }
+      if (node.type === 'xref') {
+        const pathAttribute = node.getAttributes('path')
+        let text
+        if (pathAttribute && pathAttribute.path) {
+          text = node.getText() || pathAttribute.path
+        } else {
+          text = node.getText()
+          if (text === undefined) {
+            const refs = node.getDocument().getCatalog().refs
+            const refidAttribute = node.getAttributes('refid')
+            let ref
+            if (refidAttribute.refid && refidAttribute.refid.trim().length > 0) {
+              ref = refs['$[]'](refidAttribute.refid)
+            } else {
+              ref = this.getRootDocument(node)
+            }
+            if (ref && ref.$$class.$$ancestors.map((a) => a.$$name).includes('AbstractNode')) {
+              text = ref.$xreftext(node.getAttribute('xrefstyle'), undefined, true)
+            } else {
+              const top = this.getRootDocument(node)
+              text = top ? '[^top]' : `[${refidAttribute.refid}]`
+            }
+          }
+        }
+        const id = node.hasAttribute('id') ? ` id="${node.id}"` : ''
+        const role = node.hasAttribute('role') ? ` class="${node.getRole()}"` : ''
+        const title = node.hasAttribute('title') ? ` title="${node.title}"` : ''
+        const href = node.getTarget()
+        return `<a href="${href}"${id}${role}${title} data-href="${href}">${text}</a>`
+      }
     }
     if (nodeName === 'image') {
       const nodeAttributes = node.getAttributes()
@@ -220,6 +254,13 @@ export class AsciidoctorWebViewConverter {
       }
     }
     return this.baseConverter.convert(node, transform)
+  }
+
+  private getRootDocument(node) {
+    while ((node = node.getDocument()).isNested()) {
+      node = node.getParentDocument()
+    }
+    return node
   }
 
   private generateMathJax (node, webviewResourceProvider, nonce) {
