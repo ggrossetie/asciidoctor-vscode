@@ -7,6 +7,7 @@
 	"asciidoc.showPreview.title": "Ouvrir la prévisualisation",
 	"asciidoc.preview.refresh.title": "Rafraîchir la prévisualisation",
 	"asciidoc.preview.toggleLock.title": "Verrouille/déverrouille la prévisualisation",
+	"asciidoc.toggleAntoraSupport.title": "Active/Désactive le support d'Antora",
 	"asciidoc.previewSide.title": "Ouvrir la prévisualisation sur le côté",
 	"asciidoc.saveHTML.title": "Exporter le document en HTML 5",
 	"asciidoc.saveDocbook.title": "Exporter le document en DocBook 5",

@@ -115,6 +115,11 @@
 				"category": "AsciiDoc"
 			},
 			{
+				"command": "asciidoc.toggleAntoraSupport",
+				"title": "%asciidoc.toggleAntoraSupport.title%",
+				"category": "AsciiDoc"
+			},
+			{
 				"command": "asciidoc.saveHTML",
 				"title": "%asciidoc.saveHTML.title%",
 				"category": "AsciiDoc",
@@ -190,6 +195,10 @@
 				},
 				{
 					"command": "asciidoc.saveDocbook",
+					"when": "editorLangId == asciidoc && !isWeb"
+				},
+				{
+					"command": "asciidoc.toggleAntoraSupport",
 					"when": "editorLangId == asciidoc && !isWeb"
 				},
 				{

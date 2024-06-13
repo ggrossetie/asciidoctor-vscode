@@ -99,14 +99,15 @@ export class AntoraSupportManager implements vscode.Disposable {
     AntoraSupportManager.instance = new AntoraSupportManager()
     AntoraSupportManager.workspaceState = workspaceState
     const workspaceConfiguration = vscode.workspace.getConfiguration('asciidoc', null)
-    // look for Antora support setting in workspace state
-    const isEnableAntoraSupportSettingDefined = workspaceState.get('antoraSupportSetting')
-    if (isEnableAntoraSupportSettingDefined === true) {
+    // check if the user has selected an answer for the Antora support setting which is prompted when we detect an Antora configuration file in the workspace.
+    const antoraSupportAnswerSelected = workspaceState.get('antoraSupportAnswerSelected')
+    if (antoraSupportAnswerSelected === true) {
+      // check if Antora is enabled on the workspace configuration
       const enableAntoraSupport = workspaceConfiguration.get('antora.enableAntoraSupport')
       if (enableAntoraSupport === true) {
         AntoraSupportManager.instance.registerFeatures()
       }
-    } else if (isEnableAntoraSupportSettingDefined === undefined) {
+    } else if (antoraSupportAnswerSelected === undefined) {
       // choice has not been made
       const onDidOpenAsciiDocFileAskAntoraSupport = vscode.workspace.onDidOpenTextDocument(async (textDocument) => {
         if (await antoraConfigFileExists(textDocument.uri)) {
@@ -117,11 +118,14 @@ export class AntoraSupportManager implements vscode.Disposable {
             yesAnswer,
             noAnswer
           )
-          const enableAntoraSupport = answer === yesAnswer ? true : (answer === noAnswer ? false : undefined)
-          await workspaceState.update('antoraSupportSetting', enableAntoraSupport)
-          await workspaceConfiguration.update('antora.enableAntoraSupport', enableAntoraSupport)
-          if (enableAntoraSupport) {
-            AntoraSupportManager.instance.registerFeatures()
+          const antoraSupportAnswerSelected = answer !== undefined
+          await workspaceState.update('antoraSupportAnswerSelected', antoraSupportAnswerSelected)
+          if (antoraSupportAnswerSelected) {
+            const enableAntoraSupport = answer === yesAnswer
+            await workspaceConfiguration.update('antora.enableAntoraSupport', enableAntoraSupport)
+            if (enableAntoraSupport) {
+              AntoraSupportManager.instance.registerFeatures()
+            }
           }
           // do not ask again to avoid bothering users
           onDidOpenAsciiDocFileAskAntoraSupport.dispose()
@@ -142,8 +146,8 @@ export class AntoraSupportManager implements vscode.Disposable {
   public isEnabled (): Boolean {
     const workspaceConfiguration = vscode.workspace.getConfiguration('asciidoc', null)
     // look for Antora support setting in workspace state
-    const isEnableAntoraSupportSettingDefined = AntoraSupportManager.workspaceState.get('antoraSupportSetting')
-    if (isEnableAntoraSupportSettingDefined === true) {
+    const antoraSupportAnswerSelected = AntoraSupportManager.workspaceState.get('antoraSupportAnswerSelected')
+    if (antoraSupportAnswerSelected === true) {
       const enableAntoraSupport = workspaceConfiguration.get('antora.enableAntoraSupport')
       if (enableAntoraSupport === true) {
         return true

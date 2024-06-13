@@ -1,0 +1,28 @@
+= Test
+:syntax-highlighter!:
+:experimental:
+
+[source,json]
+----
+{
+    "level": "INFO"
+}
+----
+
+
+.After landing the cloaked Klingon bird of prey in Golden Gate park:
+[quote,Captain James T. Kirk,Star Trek IV: The Voyage Home]
+Everybody remember where we parked.
+
+
+[source,js]
+----
+{
+    "level": "INFO"
+}
+----
+
+kbd:[Ctrl+T]
+
+
+This is great `Hello`!

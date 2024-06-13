@@ -8,6 +8,7 @@
 	"asciidoc.showPreview.title": "Open Preview",
 	"asciidoc.preview.refresh.title": "Refresh Preview",
 	"asciidoc.preview.toggleLock.title": "Toggle Preview Locking",
+	"asciidoc.toggleAntoraSupport.title": "Toggle Antora Support",
 	"asciidoc.previewSide.title": "Open Preview to the Side",
 	"asciidoc.saveHTML.title": "Save HTML Document",
 	"asciidoc.saveDocbook.title": "Save to DocBook",
