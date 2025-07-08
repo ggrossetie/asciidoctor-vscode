@@ -1,5 +1,5 @@
 = Diagrams
-:kroki-server-url: http://localhost:8000
+:kroki-server-url: https://kroki.io
 // The `kroki-server-url` attribute must be defined as a document attribute
 // https://docs.asciidoctor.org/asciidoc/latest/attributes/custom-attributes/ must be placed at the top of the asciidoc file
 

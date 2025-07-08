@@ -24,10 +24,13 @@ import { AsciidocEngine } from './asciidocEngine'
 import { AsciidocIncludeItemsLoader, AsciidocLoader } from './asciidocLoader'
 import { AsciidoctorIncludeItems } from './features/asciidoctorIncludeItems'
 import { antoraSupportEnabledContextKey } from './commands/antoraSupport'
+import { activate as activateTelemetry, sendTelemetryEvent } from './telemetry'
 
 export async function activate (context: vscode.ExtensionContext) {
   // Set context as a global as some tests depend on it
   (global as any).testExtensionContext = context
+  const telemetryReporter = activateTelemetry()
+  sendTelemetryEvent('activate')
   const contributionProvider = getAsciidocExtensionContributions(context)
   const asciidoctorExtensionsSecurityPolicy = AsciidoctorExtensionsSecurityPolicyArbiter.activate(context)
 
@@ -73,6 +76,7 @@ export async function activate (context: vscode.ExtensionContext) {
   const contentProvider = new AsciidocContentProvider(asciidocEngine, context)
   const symbolProvider = new AdocDocumentSymbolProvider(null, asciidocLoader)
   const previewManager = new AsciidocPreviewManager(contentProvider, logger, contributionProvider)
+  context.subscriptions.push(telemetryReporter)
   context.subscriptions.push(previewManager)
   context.subscriptions.push(new AsciidocTargetPathAutoCompletionMonitor(asciidocLoader))
   context.subscriptions.push(AntoraSupportManager.getInstance(context.workspaceState))

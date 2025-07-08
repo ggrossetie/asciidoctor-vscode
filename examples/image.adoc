@@ -1,5 +1,32 @@
 = Image
 :imagesdir: images
+:table
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 image:web-console.png[Couchbase Web Console login]
 

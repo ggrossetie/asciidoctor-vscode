@@ -234,7 +234,7 @@ export class AsciidocPreview extends Disposable implements WebviewResourceProvid
     this.throttleTimer = undefined
   }
 
-  // This method is invoked evrytime there is a document update
+  // This method is invoked everytime there is a document update
   public update (resource: vscode.Uri) {
     const editor = vscode.window.activeTextEditor
     if (editor && editor.document.uri.fsPath === resource.fsPath) {
