@@ -27,10 +27,53 @@ import {
   PreviewSecuritySelector,
 } from './security'
 import { AsciidocTargetPathAutoCompletionMonitor } from './util/includeAutoCompletion'
+import {
+  LanguageClient,
+  LanguageClientOptions,
+  ServerOptions,
+  TransportKind
+} from 'vscode-languageclient/node'
+
+let client: LanguageClient;
+
+export function deactivate() {
+  if (!client) {
+    return undefined;
+  }
+  return client.stop();
+}
 
 export async function activate(context: vscode.ExtensionContext) {
   // Set context as a global as some tests depend on it
   ;(global as any).testExtensionContext = context
+
+  let serverOptions: ServerOptions = {
+    run: { command: '/home/guillaume/Workspace/opensource/acdc/target/release/acdc-lsp', transport: TransportKind.stdio },
+    debug: {
+      command: '/home/guillaume/Workspace/opensource/acdc/target/release/acdc-lsp',
+      transport: TransportKind.stdio,
+      options: { }
+    }
+  };
+
+  let clientOptions: LanguageClientOptions = {
+    documentSelector: [{ scheme: 'file', language: 'asciidoc' }],
+    synchronize: {
+      fileEvents: vscode.workspace.createFileSystemWatcher('**/.adoc')
+    }
+  };
+
+  client = new LanguageClient(
+    'languageServerAsciiDoc',
+    'Language Server AsciiDoc',
+    serverOptions,
+    clientOptions
+  );
+
+  // Start the client. This will also launch the server
+  client.start();
+
+
   const contributionProvider = getAsciidocExtensionContributions(context)
   const asciidoctorExtensionsSecurityPolicy =
     AsciidoctorExtensionsSecurityPolicyArbiter.activate(context)

@@ -48,13 +48,6 @@
         "configuration": "./asciidoc-language-configuration.json"
       }
     ],
-    "grammars": [
-      {
-        "language": "asciidoc",
-        "scopeName": "text.asciidoc",
-        "path": "./syntaxes/asciidoc.tmLanguage.json"
-      }
-    ],
     "commands": [
       {
         "command": "asciidoc.exportAsPDF",
@@ -661,6 +654,7 @@
     "webpack-cli": "4.10.0"
   },
   "dependencies": {
+    "vscode-languageclient": "~9.0",
     "@antora/content-classifier": "3.1.7",
     "@asciidoctor/core": "2.2.7",
     "@asciidoctor/docbook-converter": "2.0.0",
