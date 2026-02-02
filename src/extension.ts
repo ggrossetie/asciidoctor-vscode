@@ -47,31 +47,32 @@ export async function activate(context: vscode.ExtensionContext) {
   // Set context as a global as some tests depend on it
   ;(global as any).testExtensionContext = context
 
-  let serverOptions: ServerOptions = {
-    run: { command: '/home/guillaume/Workspace/opensource/acdc/target/release/acdc-lsp', transport: TransportKind.stdio },
-    debug: {
-      command: '/home/guillaume/Workspace/opensource/acdc/target/release/acdc-lsp',
-      transport: TransportKind.stdio,
-      options: { }
-    }
-  };
-
-  let clientOptions: LanguageClientOptions = {
-    documentSelector: [{ scheme: 'file', language: 'asciidoc' }],
-    synchronize: {
-      fileEvents: vscode.workspace.createFileSystemWatcher('**/.adoc')
-    }
-  };
-
-  client = new LanguageClient(
-    'languageServerAsciiDoc',
-    'Language Server AsciiDoc',
-    serverOptions,
-    clientOptions
-  );
-
-  // Start the client. This will also launch the server
-  client.start();
+  // let serverOptions: ServerOptions = {
+  //   run: { module: '/home/guillaume/Workspace/onepub/oh-my-asciidoc/lsp/src/server.js', transport: TransportKind.stdio, args: ['--stdio']},
+  //   debug: {
+  //     module: '/home/guillaume/Workspace/onepub/oh-my-asciidoc/lsp/src/server.js',
+  //     args: ['--stdio'],
+  //     transport: TransportKind.stdio,
+  //     options: { }
+  //   }
+  // };
+  //
+  // let clientOptions: LanguageClientOptions = {
+  //   documentSelector: [{ scheme: 'file', language: 'asciidoc' }],
+  //   synchronize: {
+  //     fileEvents: vscode.workspace.createFileSystemWatcher('**/.adoc')
+  //   }
+  // };
+  //
+  // client = new LanguageClient(
+  //   'languageServerAsciiDoc',
+  //   'Language Server AsciiDoc',
+  //   serverOptions,
+  //   clientOptions
+  // );
+  //
+  // // Start the client. This will also launch the server
+  // client.start();
 
 
   const contributionProvider = getAsciidocExtensionContributions(context)

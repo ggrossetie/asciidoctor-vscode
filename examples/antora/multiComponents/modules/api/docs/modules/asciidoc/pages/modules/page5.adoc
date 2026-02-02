@@ -1,3 +1,26 @@
 = Page 5
+:author: John Doe
 
-This document is inside a directory named "modules" which is inside an Antora modules in a composant named "modules".
+== Page 3
+
+This document is inside a directory named "modules" which is inside an Antora modules in a composant named **modules**.
+
+[source,javascript]
+----
+console.log('hello')
+----
+
+[source,cpp]
+----
+#include <iostream> // <1>
+
+int main() { // <2>
+    std::cout << "Hello, world" << std::endl; // <3>
+    return 0; // <4>
+}
+----
+
+Use stem:[x^2] for math
+
+
+Hello {name}!

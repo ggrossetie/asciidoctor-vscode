@@ -1,0 +1,36 @@
+{
+  "name": "AsciiDoc",
+  "scopeName": "text.asciidoc",
+  "fileTypes": ["ad", "asc", "adoc", "asciidoc", "adoc.txt"],
+  "limitLineLength": false,
+  "maxTokensPerLine": 100,
+  "patterns": [
+    {
+      "include": "#titles"
+    }
+  ],
+  "repository": {
+    "titles": {
+      "patterns": [
+        {
+          "name": "markup.heading.heading-0.asciidoc",
+          "begin": "^((?:=|#){1})([\\p{Blank}]+)(?=\\S+)",
+          "end": "$",
+          "beginCaptures": {
+            "1": {
+              "name": "markup.heading.marker.asciidoc"
+            },
+            "2": {
+              "name": "markup.heading.space.asciidoc"
+            }
+          },
+          "patterns": [
+            {
+              "include": "$self"
+            }
+          ]
+        }
+      ]
+    }
+  }
+}

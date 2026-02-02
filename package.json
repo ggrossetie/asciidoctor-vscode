@@ -32,6 +32,22 @@
     "onWebviewPanel:asciidoc.preview"
   ],
   "contributes": {
+    "grammars": [
+      {
+        "language": "asciidoc",
+        "scopeName": "text.asciidoc",
+        "path": "./syntaxes/asciidoc.tmLanguage.json"
+      }
+    ],
+    "semanticTokenScopes": [
+      {
+        "language": "asciidoc",
+        "scopes": {
+          "string.strong": ["markup.bold"],
+          "string.code": ["source.js"]
+        }
+      }
+    ],
     "languages": [
       {
         "id": "asciidoc",
