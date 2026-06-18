@@ -10,6 +10,8 @@ export class InMemoryDocument implements vscode.TextDocument {
     this._lines = this._contents.split(/\n/g)
   }
 
+  encoding: string
+
   isUntitled: boolean = false
   languageId: string = ''
   version: number = 1
