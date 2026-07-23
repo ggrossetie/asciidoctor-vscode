@@ -1,5 +1,7 @@
 import assert from 'node:assert/strict'
+import fsp from 'node:fs/promises'
 import os from 'node:os'
+import path from 'node:path'
 import { after, before, describe, test } from 'node:test'
 import * as vscode from 'vscode'
 import { getDefaultWorkspaceFolderUri } from '../core/workspace.js'
@@ -428,6 +430,253 @@ describe('Antora content catalog construction', () => {
     } finally {
       await removeFiles(createdFiles)
       await resetAntoraSupport()
+    }
+  })
+
+  test('Should include a partial that is itself a symlink (#1178)', async () => {
+    if (os.platform() !== 'win32') {
+      const createdFiles: vscode.Uri[] = []
+      try {
+        createdFiles.push(await createDirectory('modules'))
+        await createDirectories('modules', 'ROOT', 'pages')
+        await createDirectories('modules', 'ROOT', 'partials')
+        const asciidocFile = await createFile(
+          'include::partial$intro.adoc[]',
+          'modules',
+          'ROOT',
+          'pages',
+          'landscape.adoc',
+        )
+        createdFiles.push(asciidocFile)
+        createdFiles.push(
+          await createFile(
+            'Reusable introduction via symlink',
+            'external-intro.adoc',
+          ),
+        )
+        createdFiles.push(
+          await createLink(
+            ['external-intro.adoc'],
+            ['modules', 'ROOT', 'partials', 'intro.adoc'],
+          ),
+        )
+        createdFiles.push(
+          await createFile(`name: ROOT\nversion: ~\n`, 'antora.yml'),
+        )
+        await enableAntoraSupport()
+        const result = await getAntoraDocumentContext(
+          asciidocFile,
+          extensionContext.workspaceState,
+        )
+        assert.ok(result, 'AntoraDocumentContext must not be undefined')
+        const contentCatalog = result.getContentCatalog()
+
+        const partial = contentCatalog.findBy({ family: 'partial' })[0]
+        assert.ok(
+          partial,
+          'The symlinked partial must be present in the content catalog',
+        )
+        assert.strictEqual(
+          partial.contents?.toString(),
+          'Reusable introduction via symlink',
+          'Contents of the symlinked partial must be loaded in the catalog',
+        )
+      } finally {
+        await removeFiles(createdFiles)
+        await resetAntoraSupport()
+      }
+    }
+  })
+
+  test('Should include a partial symlinked to a target outside the workspace (#1178)', async () => {
+    if (os.platform() !== 'win32') {
+      const createdFiles: vscode.Uri[] = []
+      let externalFile: string | undefined
+      try {
+        createdFiles.push(await createDirectory('modules'))
+        await createDirectories('modules', 'ROOT', 'pages')
+        await createDirectories('modules', 'ROOT', 'partials')
+        const asciidocFile = await createFile(
+          'include::partial$intro.adoc[]',
+          'modules',
+          'ROOT',
+          'pages',
+          'landscape.adoc',
+        )
+        createdFiles.push(asciidocFile)
+        externalFile = path.join(
+          os.tmpdir(),
+          `asciidoctor-vscode-1178-${Date.now()}.adoc`,
+        )
+        await fsp.writeFile(
+          externalFile,
+          'Reusable introduction outside the workspace',
+        )
+        const partialUri = vscode.Uri.joinPath(
+          getDefaultWorkspaceFolderUri()!,
+          'modules',
+          'ROOT',
+          'partials',
+          'intro.adoc',
+        )
+        await fsp.symlink(externalFile, partialUri.fsPath)
+        createdFiles.push(partialUri)
+        createdFiles.push(
+          await createFile(`name: ROOT\nversion: ~\n`, 'antora.yml'),
+        )
+        await enableAntoraSupport()
+        const result = await getAntoraDocumentContext(
+          asciidocFile,
+          extensionContext.workspaceState,
+        )
+        assert.ok(result, 'AntoraDocumentContext must not be undefined')
+        const contentCatalog = result.getContentCatalog()
+
+        const partial = contentCatalog.findBy({ family: 'partial' })[0]
+        assert.ok(
+          partial,
+          'The externally-symlinked partial must be present in the content catalog',
+        )
+        assert.strictEqual(
+          partial.contents?.toString(),
+          'Reusable introduction outside the workspace',
+          'Contents of the externally-symlinked partial must be loaded in the catalog',
+        )
+      } finally {
+        await removeFiles(createdFiles)
+        await resetAntoraSupport()
+        if (externalFile) {
+          await fsp.rm(externalFile, { force: true })
+        }
+      }
+    }
+  })
+
+  test('Should include a partial reached through a symlinked directory (#1178)', async () => {
+    if (os.platform() !== 'win32') {
+      const createdFiles: vscode.Uri[] = []
+      let externalDir: string | undefined
+      try {
+        createdFiles.push(await createDirectory('modules'))
+        await createDirectories('modules', 'ROOT', 'pages')
+        const asciidocFile = await createFile(
+          'include::partial$intro.adoc[]',
+          'modules',
+          'ROOT',
+          'pages',
+          'landscape.adoc',
+        )
+        createdFiles.push(asciidocFile)
+        externalDir = path.join(
+          os.tmpdir(),
+          `asciidoctor-vscode-1178-dir-${Date.now()}`,
+        )
+        await fsp.mkdir(externalDir, { recursive: true })
+        await fsp.writeFile(
+          path.join(externalDir, 'intro.adoc'),
+          'Reusable introduction through a symlinked directory',
+        )
+        const partialsUri = vscode.Uri.joinPath(
+          getDefaultWorkspaceFolderUri()!,
+          'modules',
+          'ROOT',
+          'partials',
+        )
+        await fsp.symlink(externalDir, partialsUri.fsPath, 'dir')
+        createdFiles.push(partialsUri)
+        createdFiles.push(
+          await createFile(`name: ROOT\nversion: ~\n`, 'antora.yml'),
+        )
+        await enableAntoraSupport()
+        const result = await getAntoraDocumentContext(
+          asciidocFile,
+          extensionContext.workspaceState,
+        )
+        assert.ok(result, 'AntoraDocumentContext must not be undefined')
+        const contentCatalog = result.getContentCatalog()
+
+        const partial = contentCatalog.findBy({ family: 'partial' })[0]
+        assert.ok(
+          partial,
+          'The partial reached through a symlinked directory must be present in the content catalog',
+        )
+        assert.strictEqual(
+          partial.contents?.toString(),
+          'Reusable introduction through a symlinked directory',
+          'Contents of the partial reached through a symlinked directory must be loaded in the catalog',
+        )
+      } finally {
+        await removeFiles(createdFiles)
+        await resetAntoraSupport()
+        if (externalDir) {
+          await fsp.rm(externalDir, { recursive: true, force: true })
+        }
+      }
+    }
+  })
+
+  test('Should include a .ts partial symlinked from a sibling src/ folder, outside the Antora component (#1178)', async () => {
+    if (os.platform() !== 'win32') {
+      // Mirrors the reporter's layout: a repo root containing both `src/`
+      // (application code) and `docs/` (the Antora component, with its own
+      // antora.yml) as siblings — the partial is a symlink from
+      // `docs/modules/ROOT/partials/` pointing at a source file under `src/`,
+      // i.e. outside the Antora component but still inside the workspace.
+      const createdFiles: vscode.Uri[] = []
+      try {
+        createdFiles.push(await createDirectory('src'))
+        createdFiles.push(await createDirectory('docs'))
+        await createDirectories('docs', 'modules', 'ROOT', 'pages')
+        const asciidocFile = await createFile(
+          'include::partial$score-media.store.ts[]',
+          'docs',
+          'modules',
+          'ROOT',
+          'pages',
+          'landscape.adoc',
+        )
+        createdFiles.push(asciidocFile)
+        const sourceFile = await createFile(
+          'export function getScoreMediaAdRequest() {}',
+          'src',
+          'score-media.store.ts',
+        )
+        const partialUri = vscode.Uri.joinPath(
+          getDefaultWorkspaceFolderUri()!,
+          'docs',
+          'modules',
+          'ROOT',
+          'partials',
+          'score-media.store.ts',
+        )
+        await fsp.mkdir(path.dirname(partialUri.fsPath), { recursive: true })
+        await fsp.symlink(sourceFile.fsPath, partialUri.fsPath)
+        createdFiles.push(partialUri)
+        createdFiles.push(
+          await createFile(`name: ROOT\nversion: ~\n`, 'docs', 'antora.yml'),
+        )
+        await enableAntoraSupport()
+        const result = await getAntoraDocumentContext(
+          asciidocFile,
+          extensionContext.workspaceState,
+        )
+        assert.ok(result, 'AntoraDocumentContext must not be undefined')
+        const contentCatalog = result.getContentCatalog()
+
+        const partial = contentCatalog.findBy({ family: 'partial' })[0]
+        assert.ok(
+          partial,
+          'The .ts partial symlinked from outside the component must be present in the content catalog',
+        )
+        assert.strictEqual(
+          partial.contents?.toString(),
+          'export function getScoreMediaAdRequest() {}',
+          'Contents of the .ts partial symlinked from outside the component must be loaded in the catalog',
+        )
+      } finally {
+        await removeFiles(createdFiles)
+        await resetAntoraSupport()
+      }
     }
   })
 
