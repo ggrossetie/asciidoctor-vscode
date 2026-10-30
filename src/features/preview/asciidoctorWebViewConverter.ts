@@ -56,6 +56,25 @@ function mimeTypeForTarget(target: string): string {
   return IMAGE_MIME_TYPES[ext] ?? 'application/octet-stream'
 }
 
+// The nodes that Asciidoctor converts using `imagesdir` or `iconsdir`.
+const nodesWithLocalAssets = new Set([
+  'admonition',
+  'audio',
+  'colist',
+  'image',
+  'inline_callout',
+  'inline_image',
+  'video',
+])
+
+/**
+ * Whether a value is an absolute path on the file system: POSIX, Windows drive or
+ * UNC (`vscode.Uri.fsPath` returns the last two on Windows).
+ */
+function isAbsoluteLocalPath(value: unknown): value is string {
+  return typeof value === 'string' && /^(?:\/|\\\\|[a-z]:[\\/])/i.test(value)
+}
+
 // The built-in stylesheets loaded for each `asciidoc.preview.defaultStyle`
 // value, in cascade order. A `Record` over the full union keeps this table
 // exhaustive at compile time: adding a style to `AsciidocPreviewDefaultStyle`
@@ -522,6 +541,9 @@ export class AsciidoctorWebViewConverter {
         }
       }
     }
+    if (nodesWithLocalAssets.has(nodeName)) {
+      this.useWebviewUrisForLocalAssets(node)
+    }
     // Block-level passthrough content — a `[mermaid]` diagram, or the inline SVG
     // asciidoctor-kroki emits with `opts=inline` — is written verbatim by the
     // base converter, with no wrapping element. That drops the `data-line-*` /
@@ -628,16 +650,66 @@ export class AsciidoctorWebViewConverter {
    * (`document.getAttribute('imagesdir')` would only report the header value).
    */
   private resolveImageUri(node: AbstractNode, target: string): vscode.Uri {
-    if (target.startsWith('/') || /^[a-z]:[\\/]/i.test(target)) {
-      return vscode.Uri.file(target)
+    if (isAbsoluteLocalPath(target)) {
+      return this.localPathToUri(target)
     }
     const imagesdir = node.getAttribute('imagesdir', '') || ''
-    const relativePath = imagesdir ? `${imagesdir}/${target}` : target
-    const segments = relativePath.split('/').filter((s) => s.length > 0)
+    const toSegments = (path: string) =>
+      path.split('/').filter((s) => s.length > 0)
+    if (isAbsoluteLocalPath(imagesdir)) {
+      return vscode.Uri.joinPath(
+        this.localPathToUri(imagesdir),
+        ...toSegments(target),
+      )
+    }
     return vscode.Uri.joinPath(
       uri.Utils.dirname(this.textDocument.uri),
-      ...segments,
+      ...toSegments(imagesdir),
+      ...toSegments(target),
     )
+  }
+
+  /**
+   * Turn an absolute path of the document's file system into a URI. The scheme
+   * of the document is kept so that it also works on a virtual file system, where
+   * the path is not on the local disk (`vscode.Uri.file` is still needed to
+   * normalize a Windows path).
+   */
+  private localPathToUri(path: string): vscode.Uri {
+    const fileUri = vscode.Uri.file(path)
+    return this.textDocument.uri.scheme === 'file'
+      ? fileUri
+      : this.textDocument.uri.with({
+          path: fileUri.path,
+          query: '',
+          fragment: '',
+        })
+  }
+
+  /**
+   * Make the absolute paths used by a node loadable from the webview (#1203). An
+   * absolute `imagesdir` typically comes from `{asciidoctorconfigdir}`, and
+   * Asciidoctor copies it in the `src` of the image: a webview can only load a
+   * local file through `asWebviewUri`, and a Windows path is even parsed as a URL
+   * whose scheme is the drive letter. Replacing `imagesdir` and `iconsdir` rather
+   * than each URL lets Asciidoctor keep resolving the targets (and the poster),
+   * and leave the ones that are URLs or video IDs alone.
+   */
+  private useWebviewUrisForLocalAssets(node: any): void {
+    const toWebviewUri = (path: string) =>
+      this.webviewResourceProvider
+        .asWebviewUri(this.localPathToUri(path))
+        .toString()
+    for (const name of ['imagesdir', 'iconsdir', 'target']) {
+      const value = node.getAttribute(name, null, name !== 'target')
+      if (isAbsoluteLocalPath(value)) {
+        node.setAttribute(name, toWebviewUri(value))
+      }
+    }
+    // An inline node holds its target in a property, not in an attribute.
+    if (isAbsoluteLocalPath(node.target)) {
+      node.target = toWebviewUri(node.target)
+    }
   }
 
   /**

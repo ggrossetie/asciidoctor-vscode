@@ -224,7 +224,7 @@ I want to link to xref:docB.adoc#other_anchor[]`,
       ),
       expected: `<div class="imageblock">
 <div class="content">
-<img src="${workspaceUri.path}/antora/multiComponents/cli/modules/commands/images/seaswell.png" alt="seaswell">
+<img src="${vscode.Uri.joinPath(workspaceUri, 'antora', 'multiComponents', 'cli', 'modules', 'commands', 'images', 'seaswell.png').toString()}" alt="seaswell">
 </div>
 </div>`,
     },
@@ -485,7 +485,10 @@ See xref:my-table[xrefstyle=short] for more reference.
     },
   ]
 
-  async function convertWithDataUri(input: string): Promise<string> {
+  async function convertWithDataUri(
+    input: string,
+    dataUriEnabled = true,
+  ): Promise<string> {
     const file = await vscode.workspace.openTextDocument(
       vscode.Uri.joinPath(workspaceUri, 'asciidoctorWebViewConverterTest.adoc'),
     )
@@ -502,13 +505,16 @@ See xref:my-table[xrefstyle=short] for more reference.
       undefined,
       null,
       undefined,
-      true, // dataUriEnabled
+      dataUriEnabled,
     )
     return (await asciidoctorConvert(
       input,
       createConverterOptions(converter, file.fileName),
     )) as unknown as string
   }
+
+  const convertWithDataUriDisabled = (input: string) =>
+    convertWithDataUri(input, false)
 
   const svg =
     '<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10"></svg>'
@@ -535,6 +541,105 @@ See xref:my-table[xrefstyle=short] for more reference.
       html.includes(`<img src="${svgDataUri}"`),
       `expected imagesdir-resolved data-uri in:\n${html}`,
     )
+  })
+
+  test('Should embed an image resolved against an absolute imagesdir when data-uri is enabled', async () => {
+    createdFiles.push(await createDirectory('data-uri-absolute'))
+    createdFiles.push(await createFile(svg, 'data-uri-absolute', 'in-dir.svg'))
+    const imagesdir = vscode.Uri.joinPath(
+      workspaceUri,
+      'data-uri-absolute',
+    ).fsPath
+    const html = await convertWithDataUri(
+      `:imagesdir: ${imagesdir}\n\nimage::in-dir.svg[]`,
+    )
+    assert.ok(
+      html.includes(`<img src="${svgDataUri}"`),
+      `expected data-uri resolved under the absolute imagesdir in:\n${html}`,
+    )
+  })
+
+  // #1203: an absolute `imagesdir` (typically `{asciidoctorconfigdir}/media`) or
+  // an absolute target must go through `asWebviewUri`. The webview can't load a
+  // filesystem path: `c:\project/media/image.png` is even parsed as a URL whose
+  // scheme is the drive letter, so it doesn't reach the `<base>` of the document.
+  describe('absolute local paths', () => {
+    // `Uri.file` normalizes the drive letter the same way the converter does.
+    const mediaDir = vscode.Uri.file(
+      vscode.Uri.joinPath(workspaceUri, 'media').fsPath,
+    )
+    const asset = (name: string) =>
+      vscode.Uri.joinPath(mediaDir, name).toString()
+
+    const convertWithAbsoluteDir = (input: string) =>
+      convertWithDataUriDisabled(`:imagesdir: ${mediaDir.fsPath}\n\n${input}`)
+
+    test('Should use a webview URI for a block image', async () => {
+      const html = await convertWithAbsoluteDir('image::image.png[]')
+      assert.ok(
+        html.includes(`<img src="${asset('image.png')}" alt="image"`),
+        html,
+      )
+    })
+
+    test('Should use a webview URI for an inline image', async () => {
+      const html = await convertWithAbsoluteDir('See image:image.png[] here')
+      assert.ok(
+        html.includes(`<img src="${asset('image.png')}" alt="image"`),
+        html,
+      )
+    })
+
+    test('Should use a webview URI for a video and its poster', async () => {
+      const html = await convertWithAbsoluteDir(
+        'video::movie.mp4[poster=poster.png]',
+      )
+      assert.ok(html.includes(`<video src="${asset('movie.mp4')}"`), html)
+      assert.ok(html.includes(`poster="${asset('poster.png')}"`), html)
+    })
+
+    test('Should use a webview URI for an audio', async () => {
+      const html = await convertWithAbsoluteDir('audio::sound.mp3[]')
+      assert.ok(html.includes(`<audio src="${asset('sound.mp3')}"`), html)
+    })
+
+    test('Should use a webview URI for an admonition icon', async () => {
+      const html = await convertWithDataUriDisabled(
+        `:icons:\n:iconsdir: ${mediaDir.fsPath}\n\nTIP: Some tip`,
+      )
+      assert.ok(html.includes(`<img src="${asset('tip.png')}"`), html)
+    })
+
+    test('Should use a webview URI for an absolute target', async () => {
+      const html = await convertWithDataUriDisabled(
+        `image::${vscode.Uri.joinPath(mediaDir, 'image.png').fsPath}[]`,
+      )
+      assert.ok(html.includes(`<img src="${asset('image.png')}"`), html)
+    })
+
+    test('Should use a webview URI for a Windows drive path, on any platform', async () => {
+      const html = await convertWithDataUriDisabled(
+        ':imagesdir: C:/project/media\n\nimage::image.png[]',
+      )
+      assert.ok(
+        html.includes('<img src="file:///c%3A/project/media/image.png"'),
+        html,
+      )
+    })
+
+    test('Should leave a URL target untouched', async () => {
+      const html = await convertWithAbsoluteDir(
+        'image::https://example.org/image.png[]',
+      )
+      assert.ok(html.includes('<img src="https://example.org/image.png"'), html)
+    })
+
+    test('Should leave a relative imagesdir untouched', async () => {
+      const html = await convertWithDataUriDisabled(
+        ':imagesdir: media\n\nimage::image.png[]',
+      )
+      assert.ok(html.includes('<img src="media/image.png"'), html)
+    })
   })
 
   // #705: an interdocument link with a `#fragment` is followed in the preview by
